@@ -1,6 +1,7 @@
 -- Pozioni a tempo e moltiplicatori finali (pass + pozioni + rinascite + VIP + eventi).
 local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
 local Balance = require(Shared.Config.Balance)
+local RebirthShop = require(Shared.Config.RebirthShop)
 local PassService = require(script.Parent.PassService)
 
 local Boosts = {}
@@ -31,6 +32,13 @@ function Boosts.Active(data, name: string): number
 	return 1
 end
 
+-- Bonus permanenti comprati con i gettoni della rinascita.
+function Boosts.Rebirth(data, id: string): number
+	local item = RebirthShop.Get(id)
+	local level = data.RebirthUpgrades and data.RebirthUpgrades[id] or 0
+	return 1 + level * item.Per
+end
+
 -- Bonus social: +10% per ogni amico nello stesso server (massimo 3), e +10% per Roblox Premium.
 -- L'attributo FriendsHere lo aggiorna SyncService ogni 30 secondi.
 function Boosts.Social(player): number
@@ -46,19 +54,21 @@ function Boosts.Coins(player, data): number
 		* (1 + data.Rebirths * Balance.RebirthBonus)
 		* vip
 		* Boosts.Social(player)
+		* Boosts.Rebirth(data, "Coins")
+		* Boosts.Active(data, "Magnet")
 		* Boosts.Global.Coins
 end
 
 function Boosts.Damage(player, data): number
-	return PassService.Value(player, "Damage", 1) * Boosts.Active(data, "Damage") * Boosts.Global.Damage
+	return PassService.Value(player, "Damage", 1) * Boosts.Active(data, "Damage") * Boosts.Rebirth(data, "Damage") * Boosts.Global.Damage
 end
 
 function Boosts.Training(player, data): number
-	return PassService.Value(player, "Training", 1) * Boosts.Active(data, "Training") * Boosts.Global.Training
+	return PassService.Value(player, "Training", 1) * Boosts.Active(data, "Training") * Boosts.Rebirth(data, "Training") * Boosts.Global.Training
 end
 
 function Boosts.Luck(player, data): number
-	return PassService.Value(player, "Luck", 1) * Boosts.Active(data, "Luck") * Boosts.Global.Luck
+	return PassService.Value(player, "Luck", 1) * Boosts.Active(data, "Luck") * Boosts.Rebirth(data, "Luck") * Boosts.Global.Luck
 end
 
 return Boosts

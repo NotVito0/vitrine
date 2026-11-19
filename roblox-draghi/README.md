@@ -36,6 +36,15 @@ da solo in italiano, spagnolo, portoghese e altre lingue. I commenti nel codice 
   con un tema diverso ogni sabato. Il finale regala a tutti il drago admin della settimana.
 - **Comandi admin in chat** (solo per te): `/event abuse` lancia un admin abuse in tutti i server,
   `/event luck10` (o un altro evento) ne lancia uno solo, `/event stop` li ferma.
+- **Abilità** (`Config/Abilities.lua`): 6 poteri con pulsante e ricarica (Fire Breath gratis, poi Tidal Wave,
+  Frenzy, Thunder Strike, Coin Magnet, Meteor Call), sbloccati con i cristalli. Tasti 1–6 da computer.
+- **Stile** (`Config/Cosmetics.lua`): 8 aure e 8 scie visibili da tutti. In cristalli, esclusive in Robux
+  (Rainbow Aura 99 R$, Rainbow Trail 79 R$) o del VIP (Royal Aura, Golden Trail). Il VIP ha anche il tag
+  sopra la testa e [VIP] dorato in chat.
+- **Negozio della rinascita** (`Config/RebirthShop.lua`): gettoni a ogni rinascita per potenziamenti
+  permanenti (monete, danni, allenamento, fortuna, posti in squadra).
+- **Negozio delle uova**: tutte le uova con probabilità e un pulsante per andare subito al piedistallo.
+- **Missioni giornaliere** (`Config/Quests.lua`): 3 al giorno pescate da 9, più un premio se le finisci tutte.
 - **Effetti**: schiusa animata (l'uovo trema, lampo, bagliore della rarità), numeri dei danni, mostri che
   lampeggiano quando vengono colpiti, monete che volano verso di te, pannelli e pulsanti animati, suoni.
 - **Negozio**:

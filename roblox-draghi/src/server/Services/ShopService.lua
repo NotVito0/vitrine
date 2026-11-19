@@ -16,6 +16,7 @@ local DragonService = require(script.Parent.DragonService)
 local Boosts = require(script.Parent.Boosts)
 local MarketService = require(script.Parent.MarketService)
 local GiftService = require(script.Parent.GiftService)
+local CosmeticService = require(script.Parent.CosmeticService)
 
 local ShopService = {}
 
@@ -103,6 +104,14 @@ function GRANT.CrystalDrake(player, data, info)
 	else
 		error("limited store unavailable")
 	end
+end
+
+function GRANT.AuraRainbow(player, data)
+	CosmeticService.Grant(data, "Aura", "Rainbow")
+end
+
+function GRANT.TrailRainbow(player, data)
+	CosmeticService.Grant(data, "Trail", "Rainbow")
 end
 
 function GRANT.MarketRestock(player, data)

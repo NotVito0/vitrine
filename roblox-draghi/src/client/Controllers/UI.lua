@@ -526,6 +526,25 @@ local function buildRebirthPanel()
 		end
 	end)
 	go.Parent = p.Body
+
+	-- Negozio della rinascita
+	local RebirthShop = require(Shared.Config.RebirthShop)
+	local tokensLabel = label({ Text = "", Font = DISPLAY, TextSize = 20, Size = UDim2.new(1, 0, 0, 30), LayoutOrder = 3, Parent = p.Body })
+	local rows = {}
+	for i, item in RebirthShop.List do
+		local row = shopRow(p.Body, 3 + i, item.Icon, item.Name, item.Description, false)
+		row.Button.BackgroundColor3 = C.Blue
+		row.Button.Activated:Connect(function()
+			local ok, msg = Remotes.Func("BuyRebirthUpgrade"):InvokeServer(item.Id)
+			if ok then
+				UI.Toast(item.Icon .. " " .. item.Name .. " upgraded!", "success")
+			else
+				UI.Toast(msg or "Not enough tokens", "error")
+			end
+		end)
+		rows[item.Id] = row
+	end
+
 	refreshers.Rebirth = function()
 		local data = State.Data
 		if not data then
@@ -534,13 +553,27 @@ local function buildRebirthPanel()
 		local now = 1 + data.Rebirths * Balance.RebirthBonus
 		local after = 1 + (data.Rebirths + 1) * Balance.RebirthBonus
 		info.Text = string.format(
-			"Rebirths: %d\nCoins bonus: x%.1f → x%.1f\nCost: %s coins (you have %s)\nYou keep every dragon, level and pass.",
+			"Rebirths: %d\nCoins bonus: x%.1f → x%.1f\nCost: %s coins (you have %s)\nYou keep every dragon, level and pass, and get %d rebirth token(s).",
 			data.Rebirths,
 			now,
 			after,
 			Format.Number(data.RebirthCost),
-			Format.Number(data.Coins)
+			Format.Number(data.Coins),
+			RebirthShop.TokensFor(data.Rebirths + 1)
 		)
+		tokensLabel.Text = "🪙 Rebirth Shop · you have " .. (data.RebirthTokens or 0) .. " token(s)"
+		for _, item in RebirthShop.List do
+			local level = data.RebirthUpgrades and data.RebirthUpgrades[item.Id] or 0
+			local row = rows[item.Id]
+			row.Title.Text = item.Name .. "  Lv " .. level .. "/" .. item.Max
+			if level >= item.Max then
+				row.Button.Text = "MAX ✓"
+				row.Button.BackgroundColor3 = C.Panel
+			else
+				row.Button.Text = "🪙 " .. RebirthShop.Cost(item, level + 1) .. " token(s)"
+				row.Button.BackgroundColor3 = C.Blue
+			end
+		end
 	end
 end
 
@@ -970,6 +1003,10 @@ local function buildGiftsPanel()
 		end)
 	end)
 	all.Parent = p.Frame
+	local codes = button({ Text = "🎟️ Codes", AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -270, 0, 12), Size = UDim2.fromOffset(110, 36), TextSize = 15 }, Color3.fromRGB(90, 110, 160), function()
+		UI.Open("Codes")
+	end)
+	codes.Parent = p.Frame
 	refreshers.Gifts = function()
 		task.spawn(function()
 			fetchGifts()
@@ -1330,6 +1367,236 @@ local function renderEvents()
 	end
 end
 
+---------------------------------------------------------------- Negozio delle uova
+local function buildEggsPanel()
+	local p = makePanel("Eggs", "🥚 Egg Shop")
+	p.Sub.Text = "Every egg in the game with its odds. Tap Go to stand next to it."
+	new("UIListLayout", { Padding = UDim.new(0, 10), SortOrder = Enum.SortOrder.LayoutOrder, Parent = p.Body })
+	local built = false
+	local goButtons = {}
+	refreshers.Eggs = function()
+		local data = State.Data
+		if not data then
+			return
+		end
+		if not built then
+			built = true
+			for index, island in Islands.List do
+				local card = new("Frame", { BackgroundColor3 = C.Panel2, Size = UDim2.new(1, -6, 0, 160), LayoutOrder = index, Parent = p.Body }, { corner(14) })
+				local eggBox = new("Frame", { BackgroundTransparency = 1, Position = UDim2.fromOffset(6, 6), Size = UDim2.fromOffset(90, 110), Parent = card })
+				eggViewport(eggBox, island.EggColor)
+				label({ Text = island.Name .. " Egg", Font = DISPLAY, TextSize = 15, TextXAlignment = Enum.TextXAlignment.Center, Position = UDim2.fromOffset(0, 112), Size = UDim2.fromOffset(102, 20), Parent = card })
+				label({ Text = "🪙 " .. Format.Number(island.EggCost), TextSize = 13, TextColor3 = C.Gold, TextXAlignment = Enum.TextXAlignment.Center, Position = UDim2.fromOffset(0, 132), Size = UDim2.fromOffset(102, 18), Parent = card })
+				local odds = new("Frame", { BackgroundTransparency = 1, Position = UDim2.fromOffset(108, 8), Size = UDim2.new(1, -240, 1, -16), Parent = card }, {
+					new("UIGridLayout", { CellSize = UDim2.fromOffset(76, 70), CellPadding = UDim2.fromOffset(4, 4) }),
+				})
+				local total = 0
+				for _, r in Dragons.EggRarities do
+					total += Dragons.EggWeights[r]
+				end
+				for _, id in island.EggDragons do
+					local def = Dragons.Get(id)
+					local cell = new("Frame", { BackgroundColor3 = C.Panel, Parent = odds }, { corner(10), stroke(rarityColor(def.Rarity), 2) })
+					if data.Discovered[id] then
+						viewport(cell, id, false, UDim2.new(1, 0, 0, 48))
+					else
+						label({ Text = "?", Font = DISPLAY, TextSize = 26, TextColor3 = C.Muted, TextXAlignment = Enum.TextXAlignment.Center, Size = UDim2.new(1, 0, 0, 48), Parent = cell })
+					end
+					local pct = Dragons.EggWeights[def.Rarity] / total * 100
+					label({ Text = (if pct < 10 then string.format("%.1f", pct) else string.format("%d", pct)) .. "%", Font = DISPLAY, TextSize = 13, TextColor3 = rarityColor(def.Rarity), TextXAlignment = Enum.TextXAlignment.Center, Position = UDim2.fromOffset(0, 48), Size = UDim2.new(1, 0, 0, 20), Parent = cell })
+				end
+				local go = button({ Text = "", AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, -10, 0.5, 0), Size = UDim2.fromOffset(110, 44), TextSize = 16 }, C.Orange, function()
+					local ok, msg = Remotes.Func("TeleportToEgg"):InvokeServer(index)
+					if ok then
+						UI.Close()
+					else
+						UI.Toast(msg or "Locked", "error")
+					end
+				end)
+				go.Parent = card
+				goButtons[index] = go
+			end
+		end
+		for index, island in Islands.List do
+			local open = data.Unlocked[island.Id]
+			goButtons[index].Text = if open then "Go ➜" else "🔒 Locked"
+			goButtons[index].BackgroundColor3 = if open then C.Orange else C.Panel
+		end
+	end
+end
+
+---------------------------------------------------------------- Stile (aure e scie)
+local function buildStylePanel()
+	local Cosmetics = require(Shared.Config.Cosmetics)
+	local p = makePanel("Style", "🎨 Style")
+	p.Sub.Text = "Auras and trails everyone can see. Buy once, wear forever."
+	new("UIListLayout", { Padding = UDim.new(0, 8), SortOrder = Enum.SortOrder.LayoutOrder, Parent = p.Body })
+	refreshers.Style = function()
+		local data = State.Data
+		if not data or not data.Cosmetics then
+			return
+		end
+		clearBody(p.Body)
+		local order = 0
+		for _, kind in { "Aura", "Trail" } do
+			order += 1
+			label({ Text = if kind == "Aura" then "✨ Auras" else "💨 Trails", Font = DISPLAY, TextSize = 20, Size = UDim2.new(1, 0, 0, 28), LayoutOrder = order, Parent = p.Body })
+			order += 1
+			local grid = new("Frame", { BackgroundTransparency = 1, Size = UDim2.new(1, -6, 0, 0), AutomaticSize = Enum.AutomaticSize.Y, LayoutOrder = order, Parent = p.Body }, {
+				new("UIGridLayout", { CellSize = UDim2.fromOffset(150, 130), CellPadding = UDim2.fromOffset(8, 8), SortOrder = Enum.SortOrder.LayoutOrder }),
+			})
+			local list = if kind == "Aura" then Cosmetics.Auras else Cosmetics.Trails
+			for i, item in list do
+				local vip = data.Passes and data.Passes.Single.VIP
+				local owned = if item.Price.VIP then vip else data.Cosmetics.Owned[kind .. "_" .. item.Id]
+				local wearing = data.Cosmetics[kind] == item.Id
+				local cell = new("Frame", { BackgroundColor3 = C.Panel2, LayoutOrder = i, Parent = grid }, { corner(14), stroke(if wearing then C.Gold else item.Colors[1], 2) })
+				local swatch = new("Frame", { BackgroundColor3 = Color3.new(1, 1, 1), AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 8), Size = UDim2.fromOffset(46, 46), Parent = cell }, { corner(999) })
+				new("UIGradient", { Color = if item.Rainbow then Cosmetics.RainbowSequence else ColorSequence.new(item.Colors[1], item.Colors[2]), Rotation = 45, Parent = swatch })
+				label({ Text = item.Icon, TextSize = 22, TextXAlignment = Enum.TextXAlignment.Center, Size = UDim2.fromScale(1, 1), Parent = swatch })
+				label({ Text = item.Name, Font = DISPLAY, TextSize = 14, TextXAlignment = Enum.TextXAlignment.Center, Position = UDim2.fromOffset(4, 58), Size = UDim2.new(1, -8, 0, 22), Parent = cell })
+				local text, color
+				if wearing then
+					text, color = "Wearing ✓", C.Panel
+				elseif owned then
+					text, color = "Wear", C.Orange
+				elseif item.Price.VIP then
+					text, color = "👑 VIP only", Color3.fromRGB(150, 110, 30)
+				elseif item.Price.Product then
+					text, color = "R$ " .. Products.List[item.Price.Product].Price, C.Robux
+				else
+					text, color = "💎 " .. item.Price.Gems, C.Gem
+				end
+				local b = button({ Text = text, Position = UDim2.new(0, 8, 1, -42), Size = UDim2.new(1, -16, 0, 34), TextSize = 15 }, color, function()
+					if wearing then
+						Remotes.Func("EquipCosmetic"):InvokeServer(kind, "")
+						return
+					end
+					if owned then
+						Remotes.Func("EquipCosmetic"):InvokeServer(kind, item.Id)
+						return
+					end
+					if item.Price.VIP then
+						buy("pass", "Single", "VIP")
+						return
+					end
+					if item.Price.Product then
+						buy("product", item.Price.Product)
+						return
+					end
+					local ok, msg = Remotes.Func("BuyCosmetic"):InvokeServer(kind, item.Id)
+					if ok then
+						Remotes.Func("EquipCosmetic"):InvokeServer(kind, item.Id)
+						UI.Toast(item.Icon .. " " .. item.Name .. " unlocked!", "success")
+					else
+						UI.Toast(msg or "Not enough gems", "error")
+					end
+				end)
+				b.Parent = cell
+			end
+		end
+	end
+end
+
+---------------------------------------------------------------- Abilità
+local function buildSkillsPanel()
+	local Abilities = require(Shared.Config.Abilities)
+	local p = makePanel("Skills", "⚡ Abilities")
+	p.Sub.Text = "Unlock abilities with gems. Use them from the bar at the bottom (keys 1–6)."
+	new("UIListLayout", { Padding = UDim.new(0, 8), SortOrder = Enum.SortOrder.LayoutOrder, Parent = p.Body })
+	local rows = {}
+	for i, a in Abilities.List do
+		local row = shopRow(p.Body, i, a.Icon, a.Name, a.Description .. " · cooldown " .. a.Cooldown .. " s", false)
+		row.Button.Activated:Connect(function()
+			if State.Data.Abilities[a.Id] then
+				return
+			end
+			local ok, msg = Remotes.Func("UnlockAbility"):InvokeServer(a.Id)
+			if ok then
+				UI.Toast(a.Icon .. " " .. a.Name .. " unlocked! Find it in the bar below.", "success")
+			else
+				UI.Toast(msg or "Not enough gems", "error")
+			end
+		end)
+		rows[a.Id] = row
+	end
+	refreshers.Skills = function()
+		local data = State.Data
+		if not data or not data.Abilities then
+			return
+		end
+		for _, a in Abilities.List do
+			local row = rows[a.Id]
+			if data.Abilities[a.Id] then
+				row.Button.Text = "Unlocked ✓"
+				row.Button.BackgroundColor3 = C.Panel
+			else
+				row.Button.Text = "💎 " .. a.Unlock
+				row.Button.BackgroundColor3 = C.Gem
+			end
+		end
+	end
+end
+
+---------------------------------------------------------------- Missioni
+local function buildQuestsPanel()
+	local p = makePanel("Quests", "📜 Daily Quests")
+	new("UIListLayout", { Padding = UDim.new(0, 8), SortOrder = Enum.SortOrder.LayoutOrder, Parent = p.Body })
+	local view
+	local function render()
+		if not view or not p.Frame.Visible then
+			return
+		end
+		clearBody(p.Body)
+		p.Sub.Text = "New quests in " .. Format.Time(view.ResetIn)
+		for i, q in view.Quests do
+			local row = new("Frame", { BackgroundColor3 = C.Panel2, Size = UDim2.new(1, -6, 0, 76), LayoutOrder = i, Parent = p.Body }, { corner(12) })
+			label({ Text = q.Text, Font = DISPLAY, TextSize = 17, Position = UDim2.fromOffset(14, 8), Size = UDim2.new(1, -170, 0, 22), Parent = row })
+			label({ Text = "Reward: " .. rewardText(q.Reward):gsub("\n", " · "), TextSize = 13, TextColor3 = C.Muted, Position = UDim2.fromOffset(14, 30), Size = UDim2.new(1, -170, 0, 18), Parent = row })
+			local back = new("Frame", { BackgroundColor3 = Color3.fromRGB(12, 20, 34), Position = UDim2.fromOffset(14, 54), Size = UDim2.new(1, -170, 0, 10), Parent = row }, { corner(5) })
+			new("Frame", { BackgroundColor3 = C.Robux, Size = UDim2.fromScale(q.Progress / q.Goal, 1), Parent = back }, { corner(5) })
+			local done = q.Progress >= q.Goal
+			local b = button({ Text = if q.Claimed then "✓ Claimed" elseif done then "Claim!" else q.Progress .. "/" .. q.Goal, AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, -12, 0.5, 0), Size = UDim2.fromOffset(130, 40), TextSize = 15 }, if done and not q.Claimed then C.Robux else C.Panel, function()
+				if q.Claimed or not done then
+					return
+				end
+				local result = Remotes.Func("ClaimQuest"):InvokeServer(i)
+				if result and result.Ok then
+					view = result.View
+					UI.Toast("📜 " .. result.Text, "success")
+					Sfx.Play("Reveal")
+					render()
+				end
+			end)
+			b.Parent = row
+		end
+		local all = button({ Text = if view.AllClaimed then "✓ Bonus claimed" else "Finish all 3: " .. rewardText(view.AllReward):gsub("\n", " + "), Size = UDim2.new(1, -6, 0, 44), LayoutOrder = 10, TextSize = 15 }, if view.AllDone and not view.AllClaimed then C.Gold else C.Panel, function()
+			if not view.AllDone or view.AllClaimed then
+				return
+			end
+			local result = Remotes.Func("ClaimQuest"):InvokeServer("all")
+			if result and result.Ok then
+				view = result.View
+				UI.Toast("🏆 All quests done! " .. result.Text, "success")
+				Sfx.Play("Rare")
+				render()
+			end
+		end)
+		all.Parent = p.Body
+	end
+	refreshers.Quests = function()
+		task.spawn(function()
+			local ok, v = pcall(function()
+				return Remotes.Func("GetQuests"):InvokeServer()
+			end)
+			if ok and v then
+				view = v
+				render()
+			end
+		end)
+	end
+end
+
 ---------------------------------------------------------------- HUD
 local function refreshHud(data)
 	coinsLabel.Text = Format.Number(data.Coins)
@@ -1393,8 +1660,8 @@ local function buildHud()
 		player:GetAttributeChangedSignal(attr):Connect(refreshStatus)
 	end
 
-	local side = new("Frame", { BackgroundTransparency = 1, AnchorPoint = Vector2.new(0, 0.5), Position = UDim2.new(0, 14, 0.6, 0), Size = UDim2.fromOffset(254, 240), Parent = hud }, {
-		new("UIGridLayout", { CellSize = UDim2.fromOffset(78, 70), CellPadding = UDim2.fromOffset(10, 10), SortOrder = Enum.SortOrder.LayoutOrder }),
+	local side = new("Frame", { BackgroundTransparency = 1, AnchorPoint = Vector2.new(0, 0.5), Position = UDim2.new(0, 14, 0.62, 0), Size = UDim2.fromOffset(240, 280), Parent = hud }, {
+		new("UIGridLayout", { CellSize = UDim2.fromOffset(74, 62), CellPadding = UDim2.fromOffset(8, 8), SortOrder = Enum.SortOrder.LayoutOrder }),
 	})
 	local function sideButton(text, color, order, panel)
 		local b = button({ Text = text, TextSize = 15, TextWrapped = true, LayoutOrder = order }, color, function()
@@ -1406,16 +1673,15 @@ local function buildHud()
 	sideButton("🐉\nDragons", C.Orange, 1, "Dragons")
 	sideButton("🛒\nShop", C.Robux, 2, "Shop")
 	local gifts = sideButton("🎁\nGifts", Color3.fromRGB(230, 80, 140), 3, "Gifts")
-	sideButton("🧪\nPotions", Color3.fromRGB(150, 90, 230), 4, "Potions")
-	sideButton("🏪\nMarket", Color3.fromRGB(240, 150, 50), 5, "Market")
-	sideButton("🪺\nNest", Color3.fromRGB(170, 110, 220), 6, "Nest")
-	sideButton("📅\nDaily", Color3.fromRGB(60, 170, 150), 7, "Daily")
-	sideButton("🎟️\nCodes", Color3.fromRGB(90, 110, 160), 8, "Codes")
-	sideButton("♻️\nRebirth", C.Blue, 9, "Rebirth")
-
-	eventHolder = new("Frame", { BackgroundTransparency = 1, AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -14, 0, 70), Size = UDim2.fromOffset(360, 200), Parent = hud }, {
-		new("UIListLayout", { Padding = UDim.new(0, 5), SortOrder = Enum.SortOrder.LayoutOrder, HorizontalAlignment = Enum.HorizontalAlignment.Right }),
-	})
+	sideButton("🥚\nEggs", Color3.fromRGB(240, 180, 60), 4, "Eggs")
+	sideButton("📜\nQuests", Color3.fromRGB(200, 140, 60), 5, "Quests")
+	sideButton("📅\nDaily", Color3.fromRGB(60, 170, 150), 6, "Daily")
+	sideButton("⚡\nSkills", Color3.fromRGB(230, 120, 40), 7, "Skills")
+	sideButton("🎨\nStyle", Color3.fromRGB(220, 90, 200), 8, "Style")
+	sideButton("🧪\nPotions", Color3.fromRGB(150, 90, 230), 9, "Potions")
+	sideButton("🪺\nNest", Color3.fromRGB(170, 110, 220), 10, "Nest")
+	sideButton("🏪\nMarket", Color3.fromRGB(240, 150, 50), 11, "Market")
+	sideButton("♻️\nRebirth", C.Blue, 12, "Rebirth")
 	giftButtonLabel = gifts
 	giftDot = new("Frame", { BackgroundColor3 = C.Red, AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, 4, 0, -4), Size = UDim2.fromOffset(16, 16), Visible = false, Parent = gifts }, { corner(999), stroke(Color3.new(1, 1, 1), 2) })
 
@@ -1446,6 +1712,10 @@ function UI.Start()
 	buildNestPanel()
 	buildCodesPanel()
 	buildDailyPanel()
+	buildEggsPanel()
+	buildStylePanel()
+	buildSkillsPanel()
+	buildQuestsPanel()
 
 	-- Se il premio giornaliero è pronto, si apre da solo poco dopo l'ingresso.
 	task.delay(5, function()
@@ -1471,6 +1741,8 @@ function UI.Start()
 			renderMarket()
 		elseif openPanel == "Nest" and full then
 			renderNest()
+		elseif openPanel == "Style" or openPanel == "Skills" or openPanel == "Eggs" then
+			refreshers[openPanel]()
 		end
 	end)
 
@@ -1503,6 +1775,20 @@ function UI.Start()
 	end)
 	if State.Data then
 		refreshHud(State.Data)
+	end
+
+	-- Tag [VIP] dorato in chat per chi ha il pass VIP.
+	local TextChatService = game:GetService("TextChatService")
+	if TextChatService.ChatVersion == Enum.ChatVersion.TextChatService then
+		TextChatService.OnIncomingMessage = function(message)
+			local props = Instance.new("TextChatMessageProperties")
+			local source = message.TextSource
+			local sender = source and Players:GetPlayerByUserId(source.UserId)
+			if sender and sender:GetAttribute("VIP") then
+				props.PrefixText = "<font color=\"#FFC83D\">[VIP]</font> " .. message.PrefixText
+			end
+			return props
+		end
 	end
 
 	Remotes.Event("Notify").OnClientEvent:Connect(function(text, kind)

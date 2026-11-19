@@ -8,6 +8,7 @@ local Remotes = require(Shared.Remotes)
 
 local DataService = require(script.Parent.DataService)
 local Analytics = require(script.Parent.Analytics)
+local QuestService = require(script.Parent.QuestService)
 local Boosts = require(script.Parent.Boosts)
 
 local MarketService = {}
@@ -101,6 +102,7 @@ function MarketService.Start()
 			Analytics.Spend(player, "Coins", price, data.Coins, "Market_" .. item.Potion)
 		end
 		data.Market.Bought[key] = bought + 1
+		QuestService.Add(player, "MarketBuys", 1)
 		MarketService.AddPotion(data, item.Potion, 1)
 		DataService.MarkDirty(player, false)
 		return true, view(data)

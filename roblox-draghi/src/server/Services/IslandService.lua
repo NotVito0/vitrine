@@ -4,6 +4,7 @@ local Players = game:GetService("Players")
 local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
 local Balance = require(Shared.Config.Balance)
 local Islands = require(Shared.Config.Islands)
+local RebirthShop = require(Shared.Config.RebirthShop)
 local Format = require(Shared.Format)
 local Remotes = require(Shared.Remotes)
 
@@ -64,6 +65,7 @@ function IslandService.Start()
 		data.Coins = 0
 		data.Unlocked = { [Islands.List[1].Id] = true }
 		data.Rebirths += 1
+		data.RebirthTokens += RebirthShop.TokensFor(data.Rebirths)
 		Analytics.Step(player, data, "FirstRebirth")
 		DataService.MarkDirty(player, true)
 		local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
@@ -71,6 +73,27 @@ function IslandService.Start()
 			root.CFrame = CFrame.new(WorldBuilder.Arrival(1))
 		end
 		Remotes.Event("Notify"):FireAllClients(player.DisplayName .. " reached Rebirth " .. data.Rebirths .. "!", "info")
+		return true
+	end
+
+	-- Negozio della rinascita: spende i gettoni per potenziamenti permanenti.
+	Remotes.Func("BuyRebirthUpgrade").OnServerInvoke = function(player, id)
+		local data = DataService.Get(player)
+		local item = type(id) == "string" and RebirthShop.Get(id)
+		if not data or not item then
+			return false, "Unknown upgrade"
+		end
+		local level = data.RebirthUpgrades[id] or 0
+		if level >= item.Max then
+			return false, "Already at max level"
+		end
+		local cost = RebirthShop.Cost(item, level + 1)
+		if data.RebirthTokens < cost then
+			return false, "You need " .. (cost - data.RebirthTokens) .. " more rebirth tokens"
+		end
+		data.RebirthTokens -= cost
+		data.RebirthUpgrades[id] = level + 1
+		DataService.MarkDirty(player, true)
 		return true
 	end
 

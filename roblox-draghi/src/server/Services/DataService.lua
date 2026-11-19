@@ -48,6 +48,11 @@ local function template()
 		Potions = {}, -- nome pozione -> quantità nell'inventario
 		Market = { Window = 0, Bought = {} }, -- acquisti nel mercato nella finestra attuale
 		Codes = {}, -- codici già usati
+		Cosmetics = { Owned = {}, Aura = "", Trail = "" }, -- aure e scie ("Aura_Ember"...) e quelle indossate
+		Abilities = { FireBreath = true }, -- abilità sbloccate
+		RebirthTokens = 0,
+		RebirthUpgrades = {}, -- id -> livello
+		Quests = { Day = -1, Progress = {}, Claimed = {}, AllClaimed = false },
 		Daily = { Day = 0, Last = -1 }, -- giorno della serie e ultimo giorno (UTC) ritirato
 		-- Nest = { A, B, Ends } mentre un incrocio è in corso
 		BonusTeamSlots = 0,

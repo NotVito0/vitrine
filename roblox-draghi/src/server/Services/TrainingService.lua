@@ -10,6 +10,7 @@ local DataService = require(script.Parent.DataService)
 local DragonService = require(script.Parent.DragonService)
 local WorldBuilder = require(script.Parent.WorldBuilder)
 local Boosts = require(script.Parent.Boosts)
+local QuestService = require(script.Parent.QuestService)
 
 local TrainingService = {}
 
@@ -47,6 +48,7 @@ function TrainingService.Start()
 				if index and data then
 					local xp = Islands.Get(index).TrainingXp * Boosts.Training(player, data)
 					player:SetAttribute("TrainingXp", xp)
+					QuestService.Add(player, "TrainSeconds", 1)
 					local leveled = false
 					for _, entry in DragonService.GetTeam(player) do
 						if DragonService.AddXp(entry.Dragon, xp) then

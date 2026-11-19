@@ -12,6 +12,7 @@ local Remotes = require(Shared.Remotes)
 
 local DataService = require(script.Parent.DataService)
 local Analytics = require(script.Parent.Analytics)
+local QuestService = require(script.Parent.QuestService)
 local DragonService = require(script.Parent.DragonService)
 local MonsterService = require(script.Parent.MonsterService)
 local WorldBuilder = require(script.Parent.WorldBuilder)
@@ -45,11 +46,15 @@ local function onKilled(m, damagers)
 			data.Stats.CoinsEarned += coins
 			data.Stats.MonstersDefeated += 1
 			Analytics.Step(player, data, "FirstKill")
+			QuestService.Add(player, "Kills", 1)
 			local gems = m.Gems or 0
 			if rng:NextNumber() < Balance.GemChance then
 				gems += rng:NextInteger(1, 2 + math.floor(m.Island / 2))
 			end
 			data.Gems += gems
+			if gems > 0 then
+				QuestService.Add(player, "GemsFound", gems)
+			end
 			-- Durante gli eventi delle feste, raramente un mostro lascia il drago dell'evento.
 			local drop = Boosts.EventDrop
 			if drop and rng:NextNumber() < drop.Chance * (if m.Special == "boss" then 50 else 1) then
@@ -138,7 +143,9 @@ local function tick(player, now)
 			local weather = Boosts.WeatherElement
 			local weatherMult = if weather and (def.Element == weather or def.Element2 == weather) then Boosts.WeatherBoost else 1
 			local damage = DragonService.Power(entry.Dragon) * mult * damageMult * weatherMult
-			st.Next[entry.Uid] = now + Balance.AttackInterval * rng:NextNumber(0.85, 1.15)
+			-- Abilità Frenzy: attacchi due volte più veloci.
+			local frenzy = (player:GetAttribute("FrenzyUntil") or 0) > workspace:GetServerTimeNow()
+			st.Next[entry.Uid] = now + Balance.AttackInterval * rng:NextNumber(0.85, 1.15) * (if frenzy then 0.5 else 1)
 			-- L'effetto dell'attacco solo a chi è abbastanza vicino da vederlo.
 			local attackFx = Remotes.Event("AttackFx")
 			for _, viewer in Players:GetPlayers() do

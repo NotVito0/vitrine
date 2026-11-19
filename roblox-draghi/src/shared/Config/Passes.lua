@@ -75,7 +75,7 @@ Passes.Tiers.Storage = {
 Passes.TierOrder = { "Coins", "Damage", "Training", "Luck", "HatchCount", "TeamSlots", "Storage" }
 
 Passes.Single = {
-	VIP = { Id = 0, Price = 249, Title = "VIP", Icon = "👑", Description = "+20% coins forever, VIP tag and VIP area" },
+	VIP = { Id = 0, Price = 249, Title = "VIP", Icon = "👑", Description = "+20% coins forever, VIP tag, Royal Aura and Golden Trail" },
 	Speed = { Id = 0, Price = 49, Title = "Fast Walk", Icon = "🏃", Description = "Walk twice as fast" },
 	AutoHatch = { Id = 0, Price = 149, Title = "Auto Hatch", Icon = "🔁", Description = "Keeps opening eggs for you while you stand next to one" },
 }

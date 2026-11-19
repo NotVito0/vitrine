@@ -110,6 +110,8 @@ Products.List = {
 
 	-- Venduti dentro il mercato e i regali, non nel negozio.
 	MarketRestock = { Id = 0, Price = 15, Section = "Hidden", Title = "Instant Restock", Icon = "🔄", Description = "Refill the market stock right now" },
+	AuraRainbow = { Id = 0, Price = 99, Section = "Hidden", OneTime = true, Title = "Rainbow Aura", Icon = "🌈", Description = "Exclusive rainbow aura" },
+	TrailRainbow = { Id = 0, Price = 79, Section = "Hidden", OneTime = true, Title = "Rainbow Trail", Icon = "🌈", Description = "Exclusive rainbow trail" },
 	UnlockAllGifts = { Id = 0, Price = 49, Section = "Hidden", Title = "Unlock All Gifts", Icon = "🎁", Description = "Open every gift of this session now" },
 }
 

@@ -12,6 +12,7 @@ local Remotes = require(Shared.Remotes)
 
 local DataService = require(script.Parent.DataService)
 local Analytics = require(script.Parent.Analytics)
+local QuestService = require(script.Parent.QuestService)
 local DragonService = require(script.Parent.DragonService)
 local WeatherService = require(script.Parent.WeatherService)
 
@@ -113,6 +114,7 @@ function NestService.Start()
 			return false, "Pick two dragons with different elements"
 		end
 		Analytics.Step(player, data, "FirstBreed")
+		QuestService.Add(player, "Breeds", 1)
 		data.Nest = { A = uidA, B = uidB, Ends = os.time() + Combos.NestSeconds, Weather = WeatherService.Current() }
 		DataService.MarkDirty(player, true)
 		return true

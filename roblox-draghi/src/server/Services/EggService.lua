@@ -7,6 +7,7 @@ local Remotes = require(Shared.Remotes)
 
 local DataService = require(script.Parent.DataService)
 local Analytics = require(script.Parent.Analytics)
+local QuestService = require(script.Parent.QuestService)
 local DragonService = require(script.Parent.DragonService)
 local PassService = require(script.Parent.PassService)
 local WorldBuilder = require(script.Parent.WorldBuilder)
@@ -50,6 +51,21 @@ function EggService.Start()
 	game:GetService("Players").PlayerRemoving:Connect(function(p)
 		lastHatch[p] = nil
 	end)
+	-- Il negozio delle uova porta il giocatore davanti all'uovo di un'isola sbloccata.
+	Remotes.Func("TeleportToEgg").OnServerInvoke = function(player, islandIndex)
+		local data = DataService.Get(player)
+		local island = type(islandIndex) == "number" and Islands.Get(islandIndex)
+		local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+		if not data or not island or not root then
+			return false, "Not ready"
+		end
+		if not data.Unlocked[island.Id] then
+			return false, "Unlock " .. island.Name .. " first"
+		end
+		root.CFrame = CFrame.new(WorldBuilder.Islands[islandIndex].EggPos + Vector3.new(0, 4, 12), WorldBuilder.Islands[islandIndex].EggPos)
+		return true
+	end
+
 	Remotes.Func("Hatch").OnServerInvoke = function(player, islandIndex, amount)
 		local data = DataService.Get(player)
 		local island = type(islandIndex) == "number" and Islands.Get(islandIndex)
@@ -108,6 +124,7 @@ function EggService.Grant(player, islandIndex: number, amount: number)
 		local uid, _, isNew = DragonService.Add(player, id, { Shiny = shiny, SkipEquip = true, Force = true })
 		if uid then
 			data.Stats.EggsHatched += 1
+			QuestService.Add(player, "Eggs", 1)
 			table.insert(results, { Id = id, Shiny = shiny, New = isNew, Rarity = Dragons.Get(id).Rarity })
 		end
 	end

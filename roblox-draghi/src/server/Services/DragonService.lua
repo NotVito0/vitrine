@@ -21,7 +21,7 @@ end
 
 function DragonService.TeamSize(player): number
 	local data = DataService.Get(player)
-	local bonus = if data then data.BonusTeamSlots else 0
+	local bonus = if data then data.BonusTeamSlots + (data.RebirthUpgrades.Slots or 0) else 0
 	return Balance.BaseTeamSize + bonus + PassService.Value(player, "TeamSlots", 0)
 end
 
