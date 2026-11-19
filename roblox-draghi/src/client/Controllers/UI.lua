@@ -117,7 +117,7 @@ local panels = {}
 local openPanel = nil
 
 -- Drago dentro una piccola finestra 3D (per inventario, schiusa, negozio).
-local function viewport(parent, dragonId, shiny, size)
+local function viewport(parent, dragonId, shiny, size, variant)
 	local vp = new("ViewportFrame", {
 		BackgroundTransparency = 1,
 		Size = size or UDim2.fromScale(1, 1),
@@ -126,7 +126,7 @@ local function viewport(parent, dragonId, shiny, size)
 		LightDirection = Vector3.new(-1, -1, -1),
 		Parent = parent,
 	})
-	local rig = DragonModel.Build(dragonId, shiny, 1)
+	local rig = DragonModel.Build(dragonId, shiny, 1, variant)
 	local parts, cframes = {}, {}
 	DragonModel.Pose(rig, CFrame.Angles(0, math.rad(-30), 0), 0.25, parts, cframes)
 	for i, p in parts do
@@ -270,6 +270,14 @@ local function refreshDragons(force)
 	end)
 	p.Sub.Text = string.format("Team %d/%d · Dragons %d/%d · tap a dragon to add or remove it from your team", #data.Equipped, data.TeamSize, #uids, data.InventoryMax or Balance.MaxInventory)
 
+	-- Quante copie uguali (specie, grado, brillante) ci sono, per l'evoluzione.
+	local sameCount = {}
+	for _, uid in uids do
+		local d = data.Dragons[uid]
+		local key = d.Id .. ":" .. (d.Variant or 1) .. ":" .. tostring(d.Shiny)
+		sameCount[key] = (sameCount[key] or 0) + 1
+	end
+
 	local alive = {}
 	for order, uid in uids do
 		alive[uid] = true
@@ -280,10 +288,11 @@ local function refreshDragons(force)
 			local frame = new("TextButton", { Text = "", AutoButtonColor = true, BackgroundColor3 = C.Panel2, Parent = p.Body }, { corner(12) })
 			local st = stroke(rarityColor(def.Rarity), 2)
 			st.Parent = frame
-			viewport(frame, d.Id, d.Shiny, UDim2.new(1, 0, 0, 78))
-			local name = label({ Text = def.Name .. (if d.Serial then " #" .. d.Serial else ""), Font = DISPLAY, TextSize = 13, TextWrapped = true, TextXAlignment = Enum.TextXAlignment.Center, Position = UDim2.fromOffset(4, 76), Size = UDim2.new(1, -8, 0, 30), Parent = frame })
+			viewport(frame, d.Id, d.Shiny, UDim2.new(1, 0, 0, 78), d.Variant)
+			local variantName = if (d.Variant or 1) > 1 then Dragons.Variants[d.Variant].Name .. " " else ""
+			local name = label({ Text = variantName .. def.Name .. (if d.Serial then " #" .. d.Serial else ""), Font = DISPLAY, TextSize = 13, TextWrapped = true, TextXAlignment = Enum.TextXAlignment.Center, Position = UDim2.fromOffset(4, 76), Size = UDim2.new(1, -8, 0, 30), Parent = frame })
 			local info = label({ Text = "", TextSize = 12, TextColor3 = C.Muted, TextXAlignment = Enum.TextXAlignment.Center, Position = UDim2.fromOffset(4, 106), Size = UDim2.new(1, -8, 0, 16), Parent = frame })
-			local xpBack = new("Frame", { BackgroundColor3 = Color3.fromRGB(12, 20, 34), Position = UDim2.new(0, 8, 1, -12), Size = UDim2.new(1, -16, 0, 5), Parent = frame }, { corner(3) })
+			local xpBack = new("Frame", { BackgroundColor3 = Color3.fromRGB(12, 20, 34), Position = UDim2.new(0, 8, 1, -10), Size = UDim2.new(1, -16, 0, 5), Parent = frame }, { corner(3) })
 			local xpFill = new("Frame", { BackgroundColor3 = C.Blue, Size = UDim2.fromScale(0, 1), Parent = xpBack }, { corner(3) })
 			local badge = label({ Text = "TEAM", Font = DISPLAY, TextSize = 12, TextXAlignment = Enum.TextXAlignment.Center, BackgroundTransparency = 0, BackgroundColor3 = C.Gold, TextColor3 = Color3.fromRGB(60, 40, 0), Position = UDim2.fromOffset(6, 6), Size = UDim2.fromOffset(44, 18), Parent = frame }, nil)
 			corner(6).Parent = badge
@@ -316,13 +325,30 @@ local function refreshDragons(force)
 					UI.Toast(msg, "error")
 				end
 			end)
-			cell = { Frame = frame, Info = info, XpFill = xpFill, Badge = badge, Name = name, Shiny = shinyTag }
+			local evolve = button({ Text = "", Position = UDim2.new(0, 8, 1, -34), Size = UDim2.new(1, -16, 0, 18), TextSize = 11 }, C.Gem, function()
+				local ok, result = Remotes.Func("Evolve"):InvokeServer(uid)
+				if ok and type(result) == "table" then
+					UI.ShowHatch({ { Id = result.Id, Shiny = result.Shiny, Variant = result.Variant, New = false } }, nil)
+				else
+					UI.Toast(result or "Not enough copies", "error")
+				end
+			end)
+			evolve.Parent = frame
+			cell = { Frame = frame, Info = info, XpFill = xpFill, Badge = badge, Name = name, Shiny = shinyTag, Evolve = evolve }
 			dragonCells[uid] = cell
 		end
 		cell.Frame.LayoutOrder = order
 		cell.Info.Text = string.format("Lv %d · ⚔ %s", d.Level, Format.Number(d.Power))
 		cell.XpFill.Size = UDim2.fromScale(if d.Level >= Balance.MaxLevel then 1 else math.clamp(d.Xp / math.max(1, d.Next), 0, 1), 1)
 		cell.Badge.Visible = table.find(data.Equipped, uid) ~= nil
+		local copies = sameCount[d.Id .. ":" .. (d.Variant or 1) .. ":" .. tostring(d.Shiny)] or 0
+		local maxed = (d.Variant or 1) >= #Dragons.Variants or d.Serial
+		cell.Evolve.Visible = not maxed
+		if not maxed then
+			local nextName = Dragons.Variants[(d.Variant or 1) + 1].Name
+			cell.Evolve.Text = "⬆ " .. nextName .. " " .. math.min(copies, Dragons.EvolveCost) .. "/" .. Dragons.EvolveCost
+			cell.Evolve.BackgroundColor3 = if copies >= Dragons.EvolveCost then C.Gem else C.Panel
+		end
 	end
 	for uid, cell in dragonCells do
 		if not alive[uid] then
@@ -334,7 +360,7 @@ end
 
 local function buildDragonsPanel()
 	local p = makePanel("Dragons", "🐉 Your Dragons")
-	new("UIGridLayout", { CellSize = UDim2.fromOffset(112, 140), CellPadding = UDim2.fromOffset(8, 8), SortOrder = Enum.SortOrder.LayoutOrder, Parent = p.Body })
+	new("UIGridLayout", { CellSize = UDim2.fromOffset(112, 160), CellPadding = UDim2.fromOffset(8, 8), SortOrder = Enum.SortOrder.LayoutOrder, Parent = p.Body })
 	local best = button({ Text = "Equip Best", AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -60, 0, 12), Size = UDim2.fromOffset(120, 36) }, C.Orange, function()
 		Remotes.Func("EquipBest"):InvokeServer()
 	end)
@@ -660,13 +686,14 @@ function UI.ShowHatch(results, islandIndex)
 
 			local panel = new("Frame", { BackgroundColor3 = C.Panel, BackgroundTransparency = 0.1, Size = UDim2.fromScale(1, 1), ZIndex = 21, Parent = card }, { corner(16), stroke(rarity.Color, 3) })
 			panel.ZIndex = 21
-			local vp = viewport(card, r.Id, r.Shiny, UDim2.new(1, 0, 0.62, 0))
+			local vp = viewport(card, r.Id, r.Shiny, UDim2.new(1, 0, 0.62, 0), r.Variant)
 			vp.ZIndex = 23
 			local pop = new("UIScale", { Scale = 0.4, Parent = vp })
 			TweenService:Create(pop, TweenInfo.new(0.5, Enum.EasingStyle.Back), { Scale = 1 }):Play()
 			local nameSize = if small then 15 else 18
 			label({ Text = def.Name, Font = DISPLAY, TextSize = nameSize, TextWrapped = true, TextXAlignment = Enum.TextXAlignment.Center, Position = UDim2.new(0, 6, 0.6, 0), Size = UDim2.new(1, -12, 0.18, 0), ZIndex = 23, Parent = card })
-			label({ Text = rarity.Name:upper() .. (if r.Shiny then " · SHINY ✨" else ""), Font = DISPLAY, TextSize = 13, TextColor3 = rarity.Color, TextXAlignment = Enum.TextXAlignment.Center, Position = UDim2.new(0, 6, 0.78, 0), Size = UDim2.new(1, -12, 0.1, 0), ZIndex = 23, Parent = card })
+			local gradeText = if (r.Variant or 1) > 1 then Dragons.Variants[r.Variant].Name:upper() .. " · " else ""
+			label({ Text = gradeText .. rarity.Name:upper() .. (if r.Shiny then " · SHINY ✨" else ""), Font = DISPLAY, TextSize = 13, TextColor3 = rarity.Color, TextXAlignment = Enum.TextXAlignment.Center, Position = UDim2.new(0, 6, 0.78, 0), Size = UDim2.new(1, -12, 0.1, 0), ZIndex = 23, Parent = card })
 			local el = Elements.List[def.Element]
 			label({ Text = el.Icon .. " " .. el.Name, TextSize = 12, TextColor3 = C.Muted, TextXAlignment = Enum.TextXAlignment.Center, Position = UDim2.new(0, 6, 0.88, 0), Size = UDim2.new(1, -12, 0.1, 0), ZIndex = 23, Parent = card })
 			if r.New then
@@ -1075,7 +1102,7 @@ local function renderNest()
 		local d = uid and data.Dragons[uid]
 		local slot = new("TextButton", { Text = "", AutoButtonColor = not busy, BackgroundColor3 = C.Panel, Position = UDim2.new(if side == 1 then 0 else 0.62, 10, 0, 10), Size = UDim2.new(0.38, -20, 1, -20), Parent = top }, { corner(12), stroke(if d then C.Gold else C.Muted, 2) })
 		if d then
-			viewport(slot, d.Id, d.Shiny, UDim2.new(1, 0, 0.72, 0))
+			viewport(slot, d.Id, d.Shiny, UDim2.new(1, 0, 0.72, 0), d.Variant)
 			label({ Text = elementIcon(Dragons.Get(d.Id).Element) .. " " .. Dragons.Get(d.Id).Name, Font = DISPLAY, TextSize = 13, TextWrapped = true, TextXAlignment = Enum.TextXAlignment.Center, Position = UDim2.fromScale(0, 0.72), Size = UDim2.fromScale(1, 0.28), Parent = slot })
 		else
 			label({ Text = "Pick a dragon\nbelow", TextSize = 14, TextColor3 = C.Muted, TextXAlignment = Enum.TextXAlignment.Center, Size = UDim2.fromScale(1, 1), Parent = slot })
@@ -1382,13 +1409,13 @@ local function buildEggsPanel()
 		if not built then
 			built = true
 			for index, island in Islands.List do
-				local card = new("Frame", { BackgroundColor3 = C.Panel2, Size = UDim2.new(1, -6, 0, 160), LayoutOrder = index, Parent = p.Body }, { corner(14) })
+				local card = new("Frame", { BackgroundColor3 = C.Panel2, Size = UDim2.new(1, -6, 0, 172), LayoutOrder = index, Parent = p.Body }, { corner(14) })
 				local eggBox = new("Frame", { BackgroundTransparency = 1, Position = UDim2.fromOffset(6, 6), Size = UDim2.fromOffset(90, 110), Parent = card })
 				eggViewport(eggBox, island.EggColor)
 				label({ Text = island.Name .. " Egg", Font = DISPLAY, TextSize = 15, TextXAlignment = Enum.TextXAlignment.Center, Position = UDim2.fromOffset(0, 112), Size = UDim2.fromOffset(102, 20), Parent = card })
 				label({ Text = "🪙 " .. Format.Number(island.EggCost), TextSize = 13, TextColor3 = C.Gold, TextXAlignment = Enum.TextXAlignment.Center, Position = UDim2.fromOffset(0, 132), Size = UDim2.fromOffset(102, 18), Parent = card })
 				local odds = new("Frame", { BackgroundTransparency = 1, Position = UDim2.fromOffset(108, 8), Size = UDim2.new(1, -240, 1, -16), Parent = card }, {
-					new("UIGridLayout", { CellSize = UDim2.fromOffset(76, 70), CellPadding = UDim2.fromOffset(4, 4) }),
+					new("UIGridLayout", { CellSize = UDim2.fromOffset(62, 76), CellPadding = UDim2.fromOffset(4, 4) }),
 				})
 				local total = 0
 				for _, r in Dragons.EggRarities do
@@ -1398,12 +1425,12 @@ local function buildEggsPanel()
 					local def = Dragons.Get(id)
 					local cell = new("Frame", { BackgroundColor3 = C.Panel, Parent = odds }, { corner(10), stroke(rarityColor(def.Rarity), 2) })
 					if data.Discovered[id] then
-						viewport(cell, id, false, UDim2.new(1, 0, 0, 48))
+						viewport(cell, id, false, UDim2.new(1, 0, 0, 54))
 					else
 						label({ Text = "?", Font = DISPLAY, TextSize = 26, TextColor3 = C.Muted, TextXAlignment = Enum.TextXAlignment.Center, Size = UDim2.new(1, 0, 0, 48), Parent = cell })
 					end
 					local pct = Dragons.EggWeights[def.Rarity] / total * 100
-					label({ Text = (if pct < 10 then string.format("%.1f", pct) else string.format("%d", pct)) .. "%", Font = DISPLAY, TextSize = 13, TextColor3 = rarityColor(def.Rarity), TextXAlignment = Enum.TextXAlignment.Center, Position = UDim2.fromOffset(0, 48), Size = UDim2.new(1, 0, 0, 20), Parent = cell })
+					label({ Text = (if pct < 0.1 then string.format("%.2f", pct) elseif pct < 10 then string.format("%.1f", pct) else string.format("%d", pct)) .. "%", Font = DISPLAY, TextSize = 13, TextColor3 = rarityColor(def.Rarity), TextXAlignment = Enum.TextXAlignment.Center, Position = UDim2.fromOffset(0, 54), Size = UDim2.new(1, 0, 0, 20), Parent = cell })
 				end
 				local go = button({ Text = "", AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, -10, 0.5, 0), Size = UDim2.fromOffset(110, 44), TextSize = 16 }, C.Orange, function()
 					local ok, msg = Remotes.Func("TeleportToEgg"):InvokeServer(index)
@@ -1429,7 +1456,7 @@ end
 local function buildStylePanel()
 	local Cosmetics = require(Shared.Config.Cosmetics)
 	local p = makePanel("Style", "🎨 Style")
-	p.Sub.Text = "Auras and trails everyone can see. Buy once, wear forever."
+	p.Sub.Text = "40 auras and trails everyone can see. Some you buy, some you earn with rebirths and eggs."
 	new("UIListLayout", { Padding = UDim.new(0, 8), SortOrder = Enum.SortOrder.LayoutOrder, Parent = p.Body })
 	refreshers.Style = function()
 		local data = State.Data
@@ -1448,9 +1475,9 @@ local function buildStylePanel()
 			local list = if kind == "Aura" then Cosmetics.Auras else Cosmetics.Trails
 			for i, item in list do
 				local vip = data.Passes and data.Passes.Single.VIP
-				local owned = if item.Price.VIP then vip else data.Cosmetics.Owned[kind .. "_" .. item.Id]
+				local owned = Cosmetics.Owns(item, kind, data, vip == true)
 				local wearing = data.Cosmetics[kind] == item.Id
-				local cell = new("Frame", { BackgroundColor3 = C.Panel2, LayoutOrder = i, Parent = grid }, { corner(14), stroke(if wearing then C.Gold else item.Colors[1], 2) })
+				local cell = new("Frame", { BackgroundColor3 = C.Panel2, LayoutOrder = i, Parent = grid }, { corner(14), stroke(if wearing then C.Gold else rarityColor(item.Rarity), 2) })
 				local swatch = new("Frame", { BackgroundColor3 = Color3.new(1, 1, 1), AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 8), Size = UDim2.fromOffset(46, 46), Parent = cell }, { corner(999) })
 				new("UIGradient", { Color = if item.Rainbow then Cosmetics.RainbowSequence else ColorSequence.new(item.Colors[1], item.Colors[2]), Rotation = 45, Parent = swatch })
 				label({ Text = item.Icon, TextSize = 22, TextXAlignment = Enum.TextXAlignment.Center, Size = UDim2.fromScale(1, 1), Parent = swatch })
@@ -1464,6 +1491,10 @@ local function buildStylePanel()
 					text, color = "👑 VIP only", Color3.fromRGB(150, 110, 30)
 				elseif item.Price.Product then
 					text, color = "R$ " .. Products.List[item.Price.Product].Price, C.Robux
+				elseif item.Price.Rebirths then
+					text, color = "♻️ " .. math.min(data.Rebirths, item.Price.Rebirths) .. "/" .. item.Price.Rebirths .. " rebirths", C.Panel
+				elseif item.Price.Eggs then
+					text, color = "🥚 " .. Format.Number(math.min(data.EggsHatched or 0, item.Price.Eggs)) .. "/" .. Format.Number(item.Price.Eggs), C.Panel
 				else
 					text, color = "💎 " .. item.Price.Gems, C.Gem
 				end
@@ -1482,6 +1513,10 @@ local function buildStylePanel()
 					end
 					if item.Price.Product then
 						buy("product", item.Price.Product)
+						return
+					end
+					if item.Price.Rebirths or item.Price.Eggs then
+						UI.Toast(if item.Price.Rebirths then "Unlocks at " .. item.Price.Rebirths .. " rebirths" else "Unlocks after hatching " .. Format.Number(item.Price.Eggs) .. " eggs", "info")
 						return
 					end
 					local ok, msg = Remotes.Func("BuyCosmetic"):InvokeServer(kind, item.Id)

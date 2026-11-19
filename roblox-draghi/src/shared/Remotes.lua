@@ -31,6 +31,7 @@ local FUNCTIONS = {
 	"TeleportToEgg",
 	"GetQuests",
 	"ClaimQuest",
+	"Evolve",
 }
 
 local folder

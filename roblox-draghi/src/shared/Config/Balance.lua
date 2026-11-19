@@ -16,7 +16,7 @@ Balance.GemChance = 0.04 -- probabilità che un mostro lasci cristalli
 -- Uova
 Balance.ShinyChance = 1 / 50
 Balance.ShinyMult = 2.5
-Balance.LuckyRarities = { Rare = true, Epic = true, Legendary = true } -- quelle che la fortuna moltiplica
+Balance.LuckyRarities = { Rare = true, Epic = true, Legendary = true, Mythic = true, Divine = true, Celestial = true, Secret = true } -- quelle che la fortuna moltiplica
 Balance.HatchCooldown = 0.35
 
 -- Livelli dei draghi

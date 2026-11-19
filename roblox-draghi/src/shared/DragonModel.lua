@@ -28,7 +28,7 @@ local function part(parent, size, color, ellipsoid, material)
 end
 
 -- Ritorna { Model, Root, Pieces } dove ogni pezzo ha Offset (e Wing = +1/-1 per le ali).
-function DragonModel.Build(dragonId: string, shiny: boolean?, scale: number?)
+function DragonModel.Build(dragonId: string, shiny: boolean?, scale: number?, variant: number?)
 	local def = Dragons.Get(dragonId) or Dragons.Get("SproutDrake")
 	local el = Elements.List[def.Element] or Elements.List.Nature
 	local s = scale or 1
@@ -37,12 +37,32 @@ function DragonModel.Build(dragonId: string, shiny: boolean?, scale: number?)
 	if shiny then
 		main = main:Lerp(Color3.new(1, 1, 1), 0.35)
 	end
+	-- Gradi di evoluzione: Golden (oro), Rainbow (ogni pezzo di un colore), Void (nero e viola).
+	variant = variant or 1
+	local pieceIndex = 0
+	local function tint(color)
+		pieceIndex += 1
+		if variant == 2 then
+			return color:Lerp(Color3.fromRGB(255, 200, 50), 0.75)
+		elseif variant == 3 then
+			return Color3.fromHSV((pieceIndex * 0.13) % 1, 0.65, 1)
+		elseif variant == 4 then
+			return color:Lerp(Color3.fromRGB(25, 10, 45), 0.8)
+		end
+		return color
+	end
 
 	local model = Instance.new("Model")
 	model.Name = def.Name
 	local pieces = {}
 
 	local function add(size, color, offset, ellipsoid, material)
+		if color ~= Color3.new(1, 1, 1) and color ~= Color3.fromRGB(20, 17, 28) then
+			color = tint(color)
+		end
+		if variant == 4 and material == nil and color ~= Color3.new(1, 1, 1) then
+			material = Enum.Material.SmoothPlastic
+		end
 		local p = part(model, size * s, color, ellipsoid, material)
 		local o = offset
 		o = CFrame.new(o.Position * s) * (o - o.Position)
@@ -61,7 +81,7 @@ function DragonModel.Build(dragonId: string, shiny: boolean?, scale: number?)
 		add(Vector3.new(0.24, 0.24, 0.24), Color3.fromRGB(20, 17, 28), CFrame.new(0.47 * side, 1.2, -2.3), true)
 		add(Vector3.new(0.25, 0.75, 0.25), accent, CFrame.new(0.4 * side, 1.85, -1.3) * CFrame.Angles(-0.45, 0, 0.25 * side))
 		add(Vector3.new(0.5, 0.8, 0.5), main, CFrame.new(0.6 * side, -0.9, -0.6), true)
-		local wing = part(model, Vector3.new(2.6, 0.15, 1.7) * s, accent, false)
+		local wing = part(model, Vector3.new(2.6, 0.15, 1.7) * s, if variant == 4 then Color3.fromRGB(160, 80, 255) else tint(accent), false, if variant >= 3 then Enum.Material.Neon else nil)
 		wing.Transparency = 0.05
 		table.insert(pieces, { Part = wing, Wing = side, Hinge = CFrame.new(1 * side * s, 0.6 * s, 0.2 * s), Out = CFrame.new(1.3 * side * s, 0, 0) })
 	end
@@ -79,9 +99,15 @@ function DragonModel.Build(dragonId: string, shiny: boolean?, scale: number?)
 		sparkles.Parent = body
 	end
 	local rarity = def.Rarity
-	if rarity == "Legendary" or rarity == "Limited" or rarity == "Exclusive" or rarity == "Secret" or rarity == "Event" then
+	local order = (Dragons.Rarities[rarity] or Dragons.Rarities.Common).Order
+	if variant >= 2 then
+		local sparkle = Instance.new("Sparkles")
+		sparkle.SparkleColor = Dragons.Variants[variant].Color
+		sparkle.Parent = body
+	end
+	if order >= 5 or variant >= 3 then
 		local light = Instance.new("PointLight")
-		light.Color = el.Color
+		light.Color = if variant >= 2 then Dragons.Variants[variant].Color else el.Color
 		light.Range = 10 * s
 		light.Brightness = 1.2
 		light.Parent = body

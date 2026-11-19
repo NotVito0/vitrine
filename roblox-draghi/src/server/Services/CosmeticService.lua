@@ -11,10 +11,7 @@ local PassService = require(script.Parent.PassService)
 local CosmeticService = {}
 
 local function owns(player, data, kind, item)
-	if item.Price.VIP then
-		return PassService.Has(player, "VIP")
-	end
-	return data.Cosmetics.Owned[kind .. "_" .. item.Id] == true
+	return Cosmetics.Owns(item, kind, data, PassService.Has(player, "VIP"))
 end
 
 local function sequence(item)
@@ -146,6 +143,12 @@ function CosmeticService.Start()
 		end
 		if item.Price.Product then
 			return false, "product" -- il client apre l'acquisto in Robux
+		end
+		if item.Price.Rebirths then
+			return false, "Unlocks at " .. item.Price.Rebirths .. " rebirths"
+		end
+		if item.Price.Eggs then
+			return false, "Unlocks after hatching " .. item.Price.Eggs .. " eggs"
 		end
 		if data.Gems < item.Price.Gems then
 			return false, "You need " .. (item.Price.Gems - data.Gems) .. " more gems"

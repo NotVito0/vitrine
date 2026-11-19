@@ -16,7 +16,8 @@ function DragonService.Power(dragon): number
 	end
 	local shiny = if dragon.Shiny then Balance.ShinyMult else 1
 	-- Gli ibridi del nido hanno una forza base propria (dai genitori), salvata in Base.
-	return (dragon.Base or def.Power) * shiny * Balance.LevelMult(dragon.Level or 1)
+	local variant = Dragons.Variants[dragon.Variant or 1] or Dragons.Variants[1]
+	return (dragon.Base or def.Power) * shiny * variant.Mult * Balance.LevelMult(dragon.Level or 1)
 end
 
 function DragonService.TeamSize(player): number
@@ -90,7 +91,7 @@ function DragonService.Add(player, dragonId: string, opts)
 	end
 	local uid = tostring(data.NextUid)
 	data.NextUid += 1
-	local dragon = { Id = dragonId, Level = 1, Xp = 0, Shiny = opts.Shiny == true, Serial = opts.Serial, Base = opts.Base }
+	local dragon = { Id = dragonId, Level = 1, Xp = 0, Shiny = opts.Shiny == true, Serial = opts.Serial, Base = opts.Base, Variant = opts.Variant }
 	data.Dragons[uid] = dragon
 	local isNew = not data.Discovered[dragonId]
 	data.Discovered[dragonId] = true
@@ -140,6 +141,57 @@ function DragonService.Start()
 		data.Settings.AutoEquip = false
 		DataService.MarkDirty(player, true)
 		return true
+	end
+
+	-- Evoluzione: 5 draghi uguali (stessa specie, stesso grado, stessa brillantezza) diventano 1 del grado dopo.
+	-- Si consumano prima quelli fuori squadra. Il nuovo drago tiene il livello più alto dei cinque.
+	Remotes.Func("Evolve").OnServerInvoke = function(player, uid)
+		local data = DataService.Get(player)
+		local chosen = data and type(uid) == "string" and data.Dragons[uid]
+		if not chosen then
+			return false, "Unknown dragon"
+		end
+		local variant = chosen.Variant or 1
+		if variant >= #Dragons.Variants then
+			return false, "Already at the highest grade"
+		end
+		if chosen.Serial then
+			return false, "Numbered limited dragons can't evolve"
+		end
+		local same = {}
+		for otherUid, d in data.Dragons do
+			if d.Id == chosen.Id and (d.Variant or 1) == variant and d.Shiny == chosen.Shiny and not d.Serial then
+				table.insert(same, otherUid)
+			end
+		end
+		if #same < Dragons.EvolveCost then
+			return false, "You need " .. Dragons.EvolveCost .. " of them (you have " .. #same .. ")"
+		end
+		table.sort(same, function(a, b)
+			local ea, eb = table.find(data.Equipped, a) ~= nil, table.find(data.Equipped, b) ~= nil
+			if ea ~= eb then
+				return not ea
+			end
+			return data.Dragons[a].Level < data.Dragons[b].Level
+		end)
+		local level, base = 1, nil
+		for i = 1, Dragons.EvolveCost do
+			local d = data.Dragons[same[i]]
+			level = math.max(level, d.Level)
+			if d.Base then
+				base = math.max(base or 0, d.Base)
+			end
+			local index = table.find(data.Equipped, same[i])
+			if index then
+				table.remove(data.Equipped, index)
+			end
+			data.Dragons[same[i]] = nil
+		end
+		local newUid, dragon = DragonService.Add(player, chosen.Id, { Force = true, Shiny = chosen.Shiny, Base = base, Variant = variant + 1, SkipEquip = true })
+		dragon.Level = level
+		DragonService.EquipBest(player)
+		DataService.MarkDirty(player, true)
+		return true, { Id = chosen.Id, Shiny = chosen.Shiny, Variant = variant + 1, Uid = newUid }
 	end
 
 	Remotes.Func("EquipBest").OnServerInvoke = function(player)

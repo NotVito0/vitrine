@@ -46,7 +46,7 @@ local function rebuild(player)
 	local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
 	local start = if root then root.CFrame else CFrame.new()
 	for i, item in team do
-		local rig = DragonModel.Build(item[1], item[2] == 1, 0.9 * entry.Scale)
+		local rig = DragonModel.Build(item[1], item[2] == 1, 0.9 * entry.Scale, item[3])
 		rig.Model.Parent = folder
 		table.insert(entry.Dragons, { Rig = rig, CFrame = start * CFrame.new(0, 4, 6), Phase = i * 1.7 })
 	end

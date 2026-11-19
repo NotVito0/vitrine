@@ -8,22 +8,35 @@ Dragons.Rarities = {
 	Rare = { Order = 3, Name = "Rare", Color = Color3.fromRGB(79, 163, 255), Mult = 2.6 },
 	Epic = { Order = 4, Name = "Epic", Color = Color3.fromRGB(181, 108, 255), Mult = 4.5 },
 	Legendary = { Order = 5, Name = "Legendary", Color = Color3.fromRGB(255, 176, 46), Mult = 8 },
-	Exclusive = { Order = 6, Name = "Exclusive", Color = Color3.fromRGB(63, 220, 143), Mult = 1 },
-	Limited = { Order = 7, Name = "Limited", Color = Color3.fromRGB(255, 90, 90), Mult = 1 },
-	Secret = { Order = 8, Name = "Secret", Color = Color3.fromRGB(255, 79, 139), Mult = 1 },
-	Event = { Order = 6, Name = "Event", Color = Color3.fromRGB(255, 150, 60), Mult = 1 },
+	Mythic = { Order = 6, Name = "Mythic", Color = Color3.fromRGB(255, 70, 70), Mult = 14 },
+	Divine = { Order = 7, Name = "Divine", Color = Color3.fromRGB(255, 240, 150), Mult = 25 },
+	Celestial = { Order = 8, Name = "Celestial", Color = Color3.fromRGB(110, 230, 255), Mult = 45 },
+	Secret = { Order = 9, Name = "Secret", Color = Color3.fromRGB(255, 79, 139), Mult = 80 },
+	Exclusive = { Order = 10, Name = "Exclusive", Color = Color3.fromRGB(63, 220, 143), Mult = 1 },
+	Event = { Order = 10, Name = "Event", Color = Color3.fromRGB(255, 150, 60), Mult = 1 },
+	Limited = { Order = 11, Name = "Limited", Color = Color3.fromRGB(255, 90, 90), Mult = 1 },
 }
 
--- Le cinque rarità di ogni uovo, in ordine, con il loro peso (probabilità).
-Dragons.EggRarities = { "Common", "Uncommon", "Rare", "Epic", "Legendary" }
-Dragons.EggWeights = { Common = 50, Uncommon = 30, Rare = 14, Epic = 5, Legendary = 1 }
+-- Le nove rarità di ogni uovo, dalla più comune alla più rara, con il loro peso (su 100).
+-- Secret = 1 su 10.000. Divine e superiori vengono annunciati a tutto il server.
+Dragons.EggRarities = { "Common", "Uncommon", "Rare", "Epic", "Legendary", "Mythic", "Divine", "Celestial", "Secret" }
+Dragons.EggWeights = { Common = 44, Uncommon = 28, Rare = 16, Epic = 7.5, Legendary = 3, Mythic = 1.2, Divine = 0.25, Celestial = 0.04, Secret = 0.01 }
+
+-- Evoluzioni: 5 draghi uguali dello stesso grado diventano 1 del grado dopo.
+Dragons.Variants = {
+	{ Name = "Normal", Mult = 1 },
+	{ Name = "Golden", Mult = 3, Color = Color3.fromRGB(255, 200, 60) },
+	{ Name = "Rainbow", Mult = 8, Color = Color3.fromRGB(255, 120, 220) },
+	{ Name = "Void", Mult = 20, Color = Color3.fromRGB(140, 70, 255) },
+}
+Dragons.EvolveCost = 5
 
 -- Forza base dell'isola: ogni isola i draghi sono 5 volte più forti.
 function Dragons.IslandBasePower(islandIndex: number): number
 	return 4 * 5 ^ (islandIndex - 1)
 end
 
--- Draghi delle uova, isola per isola: { id, nome, elemento } nell'ordine delle rarità sopra.
+-- Draghi delle uova, isola per isola: { id, nome, elemento, secondo elemento } nell'ordine delle rarità sopra.
 local EGG_SETS = {
 	{
 		{ "SproutDrake", "Sprout Drake", "Nature" },
@@ -31,6 +44,10 @@ local EGG_SETS = {
 		{ "BreezePup", "Breeze Pup", "Air" },
 		{ "EmberHatchling", "Ember Hatchling", "Fire" },
 		{ "BloomWyrm", "Bloom Wyrm", "Nature" },
+		{ "MeadowGuardian", "Meadow Guardian", "Nature", "Earth" },
+		{ "SunpetalDragon", "Sunpetal Dragon", "Light", "Nature" },
+		{ "VerdantSeraph", "Verdant Seraph", "Nature", "Light" },
+		{ "GlitchSprout", "Glitch Sprout", "Shadow", "Nature" },
 	},
 	{
 		{ "MossDrake", "Moss Drake", "Nature" },
@@ -38,6 +55,10 @@ local EGG_SETS = {
 		{ "OwlDrake", "Owl Drake", "Air" },
 		{ "ThornDragon", "Thorn Dragon", "Nature" },
 		{ "ElderOakDragon", "Elder Oak Dragon", "Earth" },
+		{ "AncientTreantDragon", "Ancient Treant Dragon", "Earth", "Nature" },
+		{ "DruidDragon", "Druid Dragon", "Nature", "Light" },
+		{ "ForestSpiritWyrm", "Forest Spirit Wyrm", "Light", "Nature" },
+		{ "HollowShade", "Hollow Shade", "Shadow", "Earth" },
 	},
 	{
 		{ "ShellDrake", "Shell Drake", "Water" },
@@ -45,6 +66,10 @@ local EGG_SETS = {
 		{ "TideWyvern", "Tide Wyvern", "Water" },
 		{ "PearlDragon", "Pearl Dragon", "Light" },
 		{ "LeviathanPup", "Leviathan Pup", "Water" },
+		{ "KrakenDragon", "Kraken Dragon", "Water", "Shadow" },
+		{ "TsunamiLord", "Tsunami Lord", "Water", "Air" },
+		{ "AbyssalSeraph", "Abyssal Seraph", "Water", "Light" },
+		{ "SunkenRelic", "Sunken Relic", "Shadow", "Water" },
 	},
 	{
 		{ "SandDrake", "Sand Drake", "Earth" },
@@ -52,6 +77,10 @@ local EGG_SETS = {
 		{ "DuneWyvern", "Dune Wyvern", "Air" },
 		{ "ScarabDragon", "Scarab Dragon", "Earth" },
 		{ "PharaohDragon", "Pharaoh Dragon", "Light" },
+		{ "SphinxDragon", "Sphinx Dragon", "Earth", "Light" },
+		{ "MirageDragon", "Mirage Dragon", "Light", "Air" },
+		{ "SunGodDragon", "Sun God Dragon", "Fire", "Light" },
+		{ "SandglassWyrm", "Sandglass Wyrm", "Shadow", "Earth" },
 	},
 	{
 		{ "CinderDrake", "Cinder Drake", "Fire" },
@@ -59,6 +88,10 @@ local EGG_SETS = {
 		{ "AshWyvern", "Ash Wyvern", "Shadow" },
 		{ "InfernoDragon", "Inferno Dragon", "Fire" },
 		{ "PhoenixDragon", "Phoenix Dragon", "Fire" },
+		{ "MagmaKing", "Magma King", "Fire", "Earth" },
+		{ "HellfireDragon", "Hellfire Dragon", "Fire", "Shadow" },
+		{ "SolarFlareWyrm", "Solar Flare Wyrm", "Light", "Fire" },
+		{ "ObsidianHorror", "Obsidian Horror", "Shadow", "Fire" },
 	},
 	{
 		{ "FrostDrake", "Frost Drake", "Ice" },
@@ -66,6 +99,10 @@ local EGG_SETS = {
 		{ "IcicleWyvern", "Icicle Wyvern", "Water" },
 		{ "BlizzardDragon", "Blizzard Dragon", "Ice" },
 		{ "GlacierKing", "Glacier King", "Ice" },
+		{ "FrostTitan", "Frost Titan", "Ice", "Water" },
+		{ "AuroraWyrm", "Aurora Wyrm", "Light", "Ice" },
+		{ "EternalWinter", "Eternal Winter", "Ice", "Light" },
+		{ "FrozenVoid", "Frozen Void", "Shadow", "Ice" },
 	},
 	{
 		{ "SparkDrake", "Spark Drake", "Lightning" },
@@ -73,6 +110,10 @@ local EGG_SETS = {
 		{ "VoltWyvern", "Volt Wyvern", "Air" },
 		{ "StormDragon", "Storm Dragon", "Lightning" },
 		{ "ThunderTitan", "Thunder Titan", "Lightning" },
+		{ "StormEmperor", "Storm Emperor", "Lightning", "Air" },
+		{ "PlasmaGod", "Plasma God", "Lightning", "Fire" },
+		{ "ZeusDragon", "Zeus Dragon", "Light", "Lightning" },
+		{ "StaticGhost", "Static Ghost", "Shadow", "Lightning" },
 	},
 	{
 		{ "CloudDrake", "Cloud Drake", "Air" },
@@ -80,6 +121,10 @@ local EGG_SETS = {
 		{ "SkyWyvern", "Sky Wyvern", "Air" },
 		{ "AuroraDragon", "Aurora Dragon", "Light" },
 		{ "CelestialDragon", "Celestial Dragon", "Light" },
+		{ "HeavensGateDragon", "Heaven's Gate Dragon", "Light", "Air" },
+		{ "ArchangelDragon", "Archangel Dragon", "Light", "Fire" },
+		{ "CosmicDragon", "Cosmic Dragon", "Air", "Shadow" },
+		{ "TheVoidDragon", "The Void Dragon", "Shadow", "Light" },
 	},
 }
 
@@ -94,6 +139,7 @@ for islandIndex, set in EGG_SETS do
 			Id = entry[1],
 			Name = entry[2],
 			Element = entry[3],
+			Element2 = entry[4],
 			Rarity = rarity,
 			Island = islandIndex,
 			Power = Dragons.IslandBasePower(islandIndex) * Dragons.Rarities[rarity].Mult,

@@ -54,6 +54,7 @@ local function snapshot(player, data, full)
 		Cosmetics = data.Cosmetics,
 		Abilities = data.Abilities,
 		RebirthTokens = data.RebirthTokens,
+		EggsHatched = data.Stats.EggsHatched,
 		RebirthUpgrades = data.RebirthUpgrades,
 		TeamSize = DragonService.TeamSize(player),
 		HatchCount = PassService.Value(player, "HatchCount", 1),
@@ -76,6 +77,7 @@ local function snapshot(player, data, full)
 				Serial = d.Serial,
 				Power = DragonService.Power(d),
 				Base = d.Base,
+				Variant = d.Variant or 1,
 			}
 		end
 		out.Dragons = dragons
@@ -94,7 +96,7 @@ local function updateWorldState(player, data)
 	end
 	local team = {}
 	for _, entry in DragonService.GetTeam(player) do
-		table.insert(team, { entry.Dragon.Id, entry.Dragon.Shiny and 1 or 0 })
+		table.insert(team, { entry.Dragon.Id, entry.Dragon.Shiny and 1 or 0, entry.Dragon.Variant or 1 })
 	end
 	local encoded = HttpService:JSONEncode(team)
 	if player:GetAttribute("Team") ~= encoded then

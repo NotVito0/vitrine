@@ -125,7 +125,20 @@ function EggService.Grant(player, islandIndex: number, amount: number)
 		if uid then
 			data.Stats.EggsHatched += 1
 			QuestService.Add(player, "Eggs", 1)
-			table.insert(results, { Id = id, Shiny = shiny, New = isNew, Rarity = Dragons.Get(id).Rarity })
+			local rarity = Dragons.Get(id).Rarity
+			table.insert(results, { Id = id, Shiny = shiny, New = isNew, Rarity = rarity })
+			local order = Dragons.Rarities[rarity].Order
+			if order >= Dragons.Rarities.Divine.Order then
+				local text = "🌟 " .. player.DisplayName .. " hatched a " .. string.upper(rarity) .. " " .. Dragons.Get(id).Name .. (if shiny then " ✨" else "") .. "!"
+				if rarity == "Secret" then
+					Remotes.Event("Announce"):FireAllClients(text)
+					pcall(function()
+						game:GetService("MessagingService"):PublishAsync("Announce", { Text = text, From = game.JobId })
+					end)
+				else
+					Remotes.Event("Notify"):FireAllClients(text, "level")
+				end
+			end
 		end
 	end
 	if data.Settings.AutoEquip then

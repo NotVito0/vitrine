@@ -192,11 +192,11 @@ local function buildEgg(folder, island, index, pos)
 	for slot, id in island.EggDragons do
 		local def = Dragons.Get(id)
 		local pct = Dragons.EggWeights[def.Rarity] / total * 100
-		table.insert(lines, string.format("%s  %s%%", def.Name, if pct < 10 then string.format("%.1f", pct) else string.format("%d", pct)))
+		table.insert(lines, string.format("%s  %s%%", def.Name, if pct < 0.1 then string.format("%.2f", pct) elseif pct < 10 then string.format("%.1f", pct) else string.format("%d", pct)))
 	end
-	local gui, label = billboard(egg, table.concat(lines, "\n"), UDim2.fromOffset(220, 150), Vector3.new(0, 8, 0), Color3.new(1, 1, 1), 60)
+	local gui, label = billboard(egg, table.concat(lines, "\n"), UDim2.fromOffset(240, 230), Vector3.new(0, 9, 0), Color3.new(1, 1, 1), 60)
 	label.TextScaled = false
-	label.TextSize = 16
+	label.TextSize = 15
 	label.TextYAlignment = Enum.TextYAlignment.Bottom
 
 	prompt(base, "Open 1", island.Name .. " Egg", Enum.KeyCode.E, { EggIsland = index, Amount = 1 })

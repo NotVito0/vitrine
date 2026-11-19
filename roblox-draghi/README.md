@@ -13,7 +13,12 @@ da solo in italiano, spagnolo, portoghese e altre lingue. I commenti nel codice 
 - **Combattimento automatico**: avvicinati ai mostri e i draghi attaccano da soli. Gli elementi contano
   (l'acqua batte il fuoco, il fuoco batte il ghiaccio...).
 - **Zona di allenamento**: stando dentro, anche fermi, i draghi guadagnano esperienza e salgono di livello.
-- **40 draghi** dalle uova in 5 rarità, più 4 esclusivi del negozio. Uno su 50 nasce brillante.
+- **108 draghi**: 72 dalle uova (9 per isola), 20 ibridi del nido e 16 esclusivi (negozio, premio giornaliero,
+  feste, admin abuse). Uno su 50 nasce brillante.
+- **9 rarità nelle uova**: Common 44%, Uncommon 28%, Rare 16%, Epic 7,5%, Legendary 3%, Mythic 1,2%,
+  Divine 0,25%, Celestial 0,04% e Secret 0,01% (1 su 10.000). Divine e superiori vengono annunciati;
+  i Secret in tutti i server. Più le rarità speciali Exclusive, Event e Limited.
+- **Evoluzioni**: 5 draghi uguali → 1 Golden (x3), 5 Golden → 1 Rainbow (x8), 5 Rainbow → 1 Void (x20).
 - **Probabilità sempre visibili** sopra ogni uovo, come chiede Roblox.
 - **Rinascita**: ricominci le isole, tieni i draghi e guadagni più monete per sempre.
 - **Mercato delle pozioni** su ogni isola: 4 pozioni che cambiano ogni 5 minuti (uguali in tutti i server),
@@ -38,7 +43,8 @@ da solo in italiano, spagnolo, portoghese e altre lingue. I commenti nel codice 
   `/event luck10` (o un altro evento) ne lancia uno solo, `/event stop` li ferma.
 - **Abilità** (`Config/Abilities.lua`): 6 poteri con pulsante e ricarica (Fire Breath gratis, poi Tidal Wave,
   Frenzy, Thunder Strike, Coin Magnet, Meteor Call), sbloccati con i cristalli. Tasti 1–6 da computer.
-- **Stile** (`Config/Cosmetics.lua`): 8 aure e 8 scie visibili da tutti. In cristalli, esclusive in Robux
+- **Stile** (`Config/Cosmetics.lua`): 20 aure e 20 scie visibili da tutti, con rarità. In cristalli, sbloccate
+  dai traguardi (rinascite o uova aperte, fino a 10.000 uova e 50 rinascite), esclusive in Robux
   (Rainbow Aura 99 R$, Rainbow Trail 79 R$) o del VIP (Royal Aura, Golden Trail). Il VIP ha anche il tag
   sopra la testa e [VIP] dorato in chat.
 - **Negozio della rinascita** (`Config/RebirthShop.lua`): gettoni a ogni rinascita per potenziamenti
