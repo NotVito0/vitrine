@@ -2,6 +2,7 @@
 -- pannello draghi, negozio, rinascita, schiusa delle uova, offerte e notifiche.
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
+local Debris = game:GetService("Debris")
 local Workspace = game:GetService("Workspace")
 
 local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
@@ -10,11 +11,16 @@ local Elements = require(Shared.Config.Elements)
 local Passes = require(Shared.Config.Passes)
 local Products = require(Shared.Config.Products)
 local Balance = require(Shared.Config.Balance)
+local Islands = require(Shared.Config.Islands)
+local Potions = require(Shared.Config.Potions)
+local Market = require(Shared.Config.Market)
+local Gifts = require(Shared.Config.Gifts)
 local DragonModel = require(Shared.DragonModel)
 local Format = require(Shared.Format)
 local Remotes = require(Shared.Remotes)
 
 local State = require(script.Parent.State)
+local Sfx = require(script.Parent.Sfx)
 
 local UI = {}
 
@@ -83,8 +89,25 @@ local function button(props, color, onClick)
 	end
 	corner(10).Parent = b
 	new("UIStroke", { Color = color:Lerp(Color3.new(0, 0, 0), 0.45), Thickness = 2, ApplyStrokeMode = Enum.ApplyStrokeMode.Border, Parent = b })
+	-- Il pulsante si ingrandisce un po' sotto il mouse e si schiaccia quando lo premi.
+	local scale = new("UIScale", { Parent = b })
+	b.MouseEnter:Connect(function()
+		TweenService:Create(scale, TweenInfo.new(0.12), { Scale = 1.05 }):Play()
+	end)
+	b.MouseLeave:Connect(function()
+		TweenService:Create(scale, TweenInfo.new(0.12), { Scale = 1 }):Play()
+	end)
+	b.MouseButton1Down:Connect(function()
+		TweenService:Create(scale, TweenInfo.new(0.06), { Scale = 0.93 }):Play()
+	end)
+	b.MouseButton1Up:Connect(function()
+		TweenService:Create(scale, TweenInfo.new(0.18, Enum.EasingStyle.Back), { Scale = 1 }):Play()
+	end)
 	if onClick then
-		b.Activated:Connect(onClick)
+		b.Activated:Connect(function(...)
+			Sfx.Play("Click")
+			onClick(...)
+		end)
 	end
 	return b
 end
@@ -122,6 +145,9 @@ end
 
 ---------------------------------------------------------------- Notifiche
 function UI.Toast(text, kind)
+	if kind == "error" then
+		Sfx.Play("Error")
+	end
 	local color = if kind == "error" then C.Red elseif kind == "success" then C.Robux elseif kind == "level" then C.Blue else C.Panel2
 	local t = new("TextLabel", {
 		BackgroundColor3 = color,
@@ -173,7 +199,13 @@ local function makePanel(name, title)
 		BackgroundColor3 = C.Panel,
 		Visible = false,
 		Parent = gui,
-	}, { corner(18), stroke(Color3.fromRGB(60, 80, 120), 2), new("UISizeConstraint", { MaxSize = Vector2.new(760, 560), MinSize = Vector2.new(320, 300) }) })
+	}, {
+		corner(18),
+		stroke(Color3.fromRGB(60, 80, 120), 2),
+		new("UISizeConstraint", { MaxSize = Vector2.new(760, 560), MinSize = Vector2.new(320, 300) }),
+		new("UIScale", { Name = "Pop" }),
+		new("UIGradient", { Rotation = 90, Color = ColorSequence.new(Color3.fromRGB(255, 255, 255), Color3.fromRGB(200, 210, 230)) }),
+	})
 	label({ Text = title, Font = DISPLAY, TextSize = 28, Position = UDim2.fromOffset(18, 10), Size = UDim2.new(1, -80, 0, 36), Parent = frame })
 	button({ Text = "✕", AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -12, 0, 10), Size = UDim2.fromOffset(38, 38) }, C.Red, function()
 		UI.Close()
@@ -209,7 +241,11 @@ function UI.Open(name)
 	end
 	UI.Close()
 	openPanel = name
-	panels[name].Frame.Visible = true
+	local frame = panels[name].Frame
+	frame.Visible = true
+	local pop = frame:FindFirstChild("Pop")
+	pop.Scale = 0.85
+	TweenService:Create(pop, TweenInfo.new(0.25, Enum.EasingStyle.Back), { Scale = 1 }):Play()
 	if refreshers[name] then
 		refreshers[name](true)
 	end
@@ -499,37 +535,134 @@ local function buildRebirthPanel()
 end
 
 ---------------------------------------------------------------- Schiusa
-function UI.ShowHatch(results)
-	local overlay = new("TextButton", { Text = "", AutoButtonColor = false, BackgroundColor3 = Color3.new(0, 0, 0), BackgroundTransparency = 0.45, Size = UDim2.fromScale(1, 1), ZIndex = 20, Parent = gui })
-	local holder = new("Frame", { BackgroundTransparency = 1, AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromScale(0.9, 0.5), ZIndex = 21, Parent = overlay }, {
+-- Un uovo dentro una finestra 3D, del colore dell'isola.
+local function eggViewport(parent, color)
+	local vp = new("ViewportFrame", { BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1), Ambient = Color3.fromRGB(210, 210, 220), LightDirection = Vector3.new(-1, -1, -1), Parent = parent })
+	local egg = new("Part", { Anchored = true, Size = Vector3.new(4, 5, 4), Color = color, Material = Enum.Material.SmoothPlastic, CFrame = CFrame.new() })
+	new("SpecialMesh", { MeshType = Enum.MeshType.Sphere, Parent = egg })
+	for i = 1, 5 do
+		local a = i * 1.3
+		local spot = new("Part", { Anchored = true, Size = Vector3.new(0.9, 0.9, 0.3), Color = color:Lerp(Color3.new(1, 1, 1), 0.55), CFrame = CFrame.Angles(0, a, 0) * CFrame.new(0, (i - 3) * 0.7, -1.9) })
+		new("SpecialMesh", { MeshType = Enum.MeshType.Sphere, Parent = spot })
+		spot.Parent = vp
+	end
+	egg.Parent = vp
+	local cam = new("Camera", { FieldOfView = 40, Parent = vp })
+	cam.CFrame = CFrame.lookAt(Vector3.new(0, 0.5, -9.5), Vector3.new(0, 0, 0))
+	vp.CurrentCamera = cam
+	return vp
+end
+
+-- La schiusa: l'uovo trema sempre più forte, lampo bianco, poi compare il drago.
+-- I draghi rari hanno un bagliore del colore della rarità e un suono più profondo.
+function UI.ShowHatch(results, islandIndex)
+	local island = Islands.Get(islandIndex or 1) or Islands.List[1]
+	local overlay = new("TextButton", { Text = "", AutoButtonColor = false, BackgroundColor3 = Color3.new(0, 0, 0), BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1), ZIndex = 20, Parent = gui })
+	TweenService:Create(overlay, TweenInfo.new(0.25), { BackgroundTransparency = 0.35 }):Play()
+	local holder = new("Frame", { BackgroundTransparency = 1, AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromScale(0.92, 0.62), ZIndex = 21, Parent = overlay }, {
 		new("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, HorizontalAlignment = Enum.HorizontalAlignment.Center, VerticalAlignment = Enum.VerticalAlignment.Center, Padding = UDim.new(0, 10), Wraps = true }),
 	})
+	local best = 0
 	for _, r in results do
-		local def = Dragons.Get(r.Id)
-		local card = new("Frame", { BackgroundColor3 = C.Panel, Size = UDim2.fromOffset(170, 220), ZIndex = 22, Parent = holder }, { corner(16), stroke(rarityColor(def.Rarity), 3) })
-		local scale = new("UIScale", { Scale = 0.2, Parent = card })
-		TweenService:Create(scale, TweenInfo.new(0.45, Enum.EasingStyle.Back), { Scale = 1 }):Play()
-		local vp = viewport(card, r.Id, r.Shiny, UDim2.new(1, 0, 0, 130))
-		vp.ZIndex = 23
-		label({ Text = def.Name, Font = DISPLAY, TextSize = 18, TextWrapped = true, TextXAlignment = Enum.TextXAlignment.Center, Position = UDim2.fromOffset(6, 128), Size = UDim2.new(1, -12, 0, 40), ZIndex = 23, Parent = card })
-		label({ Text = def.Rarity:upper() .. (if r.Shiny then " · SHINY ✨" else ""), Font = DISPLAY, TextSize = 14, TextColor3 = rarityColor(def.Rarity), TextXAlignment = Enum.TextXAlignment.Center, Position = UDim2.fromOffset(6, 168), Size = UDim2.new(1, -12, 0, 20), ZIndex = 23, Parent = card })
-		if r.New then
-			local tag = label({ Text = "NEW!", Font = DISPLAY, TextSize = 14, TextColor3 = Color3.fromRGB(60, 40, 0), BackgroundTransparency = 0, BackgroundColor3 = C.Gold, TextXAlignment = Enum.TextXAlignment.Center, Position = UDim2.fromOffset(8, 8), Size = UDim2.fromOffset(52, 22), ZIndex = 24, Parent = card })
-			corner(8).Parent = tag
-		end
-		local el = Elements.List[def.Element]
-		label({ Text = el.Icon .. " " .. el.Name, TextSize = 13, TextColor3 = C.Muted, TextXAlignment = Enum.TextXAlignment.Center, Position = UDim2.fromOffset(6, 190), Size = UDim2.new(1, -12, 0, 20), ZIndex = 23, Parent = card })
+		best = math.max(best, Dragons.Rarities[Dragons.Get(r.Id).Rarity].Order)
 	end
+	local small = #results > 3
+	local cardSize = if small then UDim2.fromOffset(130, 180) else UDim2.fromOffset(170, 220)
+
+	for index, r in results do
+		local def = Dragons.Get(r.Id)
+		local rarity = Dragons.Rarities[def.Rarity]
+		local card = new("Frame", { BackgroundTransparency = 1, Size = cardSize, ZIndex = 22, LayoutOrder = index, Parent = holder })
+		local eggHolder = new("Frame", { BackgroundTransparency = 1, AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.45), Size = UDim2.fromScale(0.9, 0.7), ZIndex = 22, Parent = card })
+		local eggVp = eggViewport(eggHolder, island.EggColor)
+		eggVp.ZIndex = 22
+		local eggCam = eggVp.CurrentCamera
+		local scaleIn = new("UIScale", { Scale = 0.3, Parent = card })
+		TweenService:Create(scaleIn, TweenInfo.new(0.3, Enum.EasingStyle.Back), { Scale = 1 }):Play()
+
+		task.spawn(function()
+			-- L'uovo trema sempre più forte.
+			local start = os.clock()
+			local duration = 1.1 + (index - 1) * 0.12
+			while os.clock() - start < duration and eggVp.Parent do
+				local t = (os.clock() - start) / duration
+				local shake = math.sin(os.clock() * (18 + t * 30)) * (0.08 + t * 0.35)
+				eggCam.CFrame = CFrame.Angles(0, 0, shake) * CFrame.lookAt(Vector3.new(0, 0.5, -9.5 + t * 2), Vector3.new(0, 0, 0))
+				task.wait()
+			end
+			if not card.Parent then
+				return
+			end
+			eggHolder:Destroy()
+			Sfx.Play(if rarity.Order >= 4 then "Rare" else "Reveal")
+
+			-- Lampo bianco.
+			local flash = new("Frame", { BackgroundColor3 = Color3.new(1, 1, 1), Size = UDim2.fromScale(1, 1), ZIndex = 26, Parent = card }, { corner(16) })
+			TweenService:Create(flash, TweenInfo.new(0.35), { BackgroundTransparency = 1 }):Play()
+			Debris:AddItem(flash, 0.4)
+
+			-- Bagliore della rarità che pulsa dietro il drago.
+			local glow = new("Frame", { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.32), Size = UDim2.fromScale(0.75, 0.52), BackgroundColor3 = rarity.Color, BackgroundTransparency = 0.55, ZIndex = 22, Parent = card }, {
+				corner(999),
+			})
+			task.spawn(function()
+				while glow.Parent do
+					TweenService:Create(glow, TweenInfo.new(0.8, Enum.EasingStyle.Sine), { BackgroundTransparency = 0.25 }):Play()
+					task.wait(0.8)
+					TweenService:Create(glow, TweenInfo.new(0.8, Enum.EasingStyle.Sine), { BackgroundTransparency = 0.6 }):Play()
+					task.wait(0.8)
+				end
+			end)
+
+			local panel = new("Frame", { BackgroundColor3 = C.Panel, BackgroundTransparency = 0.1, Size = UDim2.fromScale(1, 1), ZIndex = 21, Parent = card }, { corner(16), stroke(rarity.Color, 3) })
+			panel.ZIndex = 21
+			local vp = viewport(card, r.Id, r.Shiny, UDim2.new(1, 0, 0.62, 0))
+			vp.ZIndex = 23
+			local pop = new("UIScale", { Scale = 0.4, Parent = vp })
+			TweenService:Create(pop, TweenInfo.new(0.5, Enum.EasingStyle.Back), { Scale = 1 }):Play()
+			local nameSize = if small then 15 else 18
+			label({ Text = def.Name, Font = DISPLAY, TextSize = nameSize, TextWrapped = true, TextXAlignment = Enum.TextXAlignment.Center, Position = UDim2.new(0, 6, 0.6, 0), Size = UDim2.new(1, -12, 0.18, 0), ZIndex = 23, Parent = card })
+			label({ Text = rarity.Name:upper() .. (if r.Shiny then " · SHINY ✨" else ""), Font = DISPLAY, TextSize = 13, TextColor3 = rarity.Color, TextXAlignment = Enum.TextXAlignment.Center, Position = UDim2.new(0, 6, 0.78, 0), Size = UDim2.new(1, -12, 0.1, 0), ZIndex = 23, Parent = card })
+			local el = Elements.List[def.Element]
+			label({ Text = el.Icon .. " " .. el.Name, TextSize = 12, TextColor3 = C.Muted, TextXAlignment = Enum.TextXAlignment.Center, Position = UDim2.new(0, 6, 0.88, 0), Size = UDim2.new(1, -12, 0.1, 0), ZIndex = 23, Parent = card })
+			if r.New then
+				local tag = label({ Text = "NEW!", Font = DISPLAY, TextSize = 13, TextColor3 = Color3.fromRGB(60, 40, 0), BackgroundTransparency = 0, BackgroundColor3 = C.Gold, TextXAlignment = Enum.TextXAlignment.Center, Position = UDim2.fromOffset(8, 8), Size = UDim2.fromOffset(48, 20), ZIndex = 24, Parent = card })
+				corner(8).Parent = tag
+			end
+		end)
+	end
+
+	-- Per i draghi epici o meglio, la schermata trema un attimo.
+	if best >= 4 then
+		task.delay(1.15, function()
+			local origin = holder.Position
+			for i = 1, 8 do
+				holder.Position = origin + UDim2.fromOffset(math.random(-8, 8), math.random(-6, 6))
+				task.wait(0.03)
+				if not holder.Parent then
+					return
+				end
+			end
+			holder.Position = origin
+		end)
+	end
+
 	local closed = false
 	local function close()
 		if closed then
 			return
 		end
 		closed = true
-		overlay:Destroy()
+		TweenService:Create(overlay, TweenInfo.new(0.2), { BackgroundTransparency = 1 }):Play()
+		task.delay(0.15, function()
+			overlay:Destroy()
+		end)
 	end
-	overlay.Activated:Connect(close)
-	task.delay(3.5, close)
+	-- Si chiude con un tocco (dopo la schiusa) o da sola dopo qualche secondo.
+	task.delay(1.4, function()
+		overlay.Activated:Connect(close)
+	end)
+	task.delay(4.5 + #results * 0.12, close)
 end
 
 ---------------------------------------------------------------- Offerte
@@ -560,6 +693,305 @@ function UI.ShowOffer(key, text)
 		overlay:Destroy()
 	end)
 	no.Parent = card
+end
+
+---------------------------------------------------------------- Mercato
+local marketView = nil
+
+local function clearBody(body)
+	for _, c in body:GetChildren() do
+		if c:IsA("GuiObject") then
+			c:Destroy()
+		end
+	end
+end
+
+local function potionBadge(parent, potion, size)
+	local circle = new("Frame", { BackgroundColor3 = potion.Color, Size = size, Parent = parent }, { corner(999), stroke(potion.Color:Lerp(Color3.new(1, 1, 1), 0.5), 2) })
+	label({ Text = potion.Icon, TextScaled = true, TextXAlignment = Enum.TextXAlignment.Center, Size = UDim2.fromScale(1, 1), Parent = circle }, nil)
+	return circle
+end
+
+local function renderMarket()
+	local p = panels.Market
+	if not p.Frame.Visible or not marketView then
+		return
+	end
+	clearBody(p.Body)
+	local data = State.Data
+	for _, item in marketView.Items do
+		local potion = Potions.List[item.Potion]
+		local rarity = Dragons.Rarities[potion.Rarity]
+		local card = new("Frame", { BackgroundColor3 = C.Panel2, LayoutOrder = item.Slot, Parent = p.Body }, { corner(14), stroke(rarity.Color, 2) })
+		local badge = potionBadge(card, potion, UDim2.fromOffset(62, 62))
+		badge.AnchorPoint = Vector2.new(0.5, 0)
+		badge.Position = UDim2.new(0.5, 0, 0, 12)
+		label({ Text = potion.Name, Font = DISPLAY, TextSize = 16, TextWrapped = true, TextXAlignment = Enum.TextXAlignment.Center, Position = UDim2.fromOffset(6, 78), Size = UDim2.new(1, -12, 0, 36), Parent = card })
+		label({ Text = string.format("%s x%s · %s", potion.Boost, tostring(potion.Mult), Format.Time(potion.Seconds)), TextSize = 12, TextColor3 = C.Muted, TextXAlignment = Enum.TextXAlignment.Center, Position = UDim2.fromOffset(6, 112), Size = UDim2.new(1, -12, 0, 16), Parent = card })
+		label({ Text = rarity.Name:upper() .. "  ·  " .. item.Left .. "/" .. item.Stock .. " left", Font = DISPLAY, TextSize = 12, TextColor3 = rarity.Color, TextXAlignment = Enum.TextXAlignment.Center, Position = UDim2.fromOffset(6, 130), Size = UDim2.new(1, -12, 0, 16), Parent = card })
+		local priceText = if item.Gems then "💎 " .. item.Gems else "🪙 " .. Format.Number(item.Coins or 0)
+		local affordable = if item.Gems then data.Gems >= item.Gems else data.Coins >= (item.Coins or 0)
+		local color = if item.Left <= 0 then C.Panel elseif affordable then C.Orange else Color3.fromRGB(110, 80, 70)
+		local b = button({ Text = if item.Left <= 0 then "Sold out" else priceText, Position = UDim2.new(0, 10, 1, -46), Size = UDim2.new(1, -20, 0, 36), TextSize = 16 }, color, function()
+			if item.Left <= 0 then
+				UI.Toast("Sold out until the next restock", "error")
+				return
+			end
+			local ok, result = Remotes.Func("BuyMarket"):InvokeServer(item.Slot)
+			if ok then
+				marketView = result
+				UI.Toast(potion.Icon .. " " .. potion.Name .. " added to your potions", "success")
+				renderMarket()
+			else
+				UI.Toast(result or "Could not buy", "error")
+			end
+		end)
+		b.Parent = card
+	end
+end
+
+local function buildMarketPanel()
+	local p = makePanel("Market", "🧪 Potion Market")
+	new("UIGridLayout", { CellSize = UDim2.fromOffset(160, 210), CellPadding = UDim2.fromOffset(10, 10), SortOrder = Enum.SortOrder.LayoutOrder, HorizontalAlignment = Enum.HorizontalAlignment.Center, Parent = p.Body })
+	local restock = button({ Text = "🔄 Restock now · R$ " .. Products.List.MarketRestock.Price, AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -60, 0, 12), Size = UDim2.fromOffset(210, 36), TextSize = 15 }, C.Robux, function()
+		local ok, msg = Remotes.Func("BuyProduct"):InvokeServer("MarketRestock")
+		if msg then
+			UI.Toast(msg, if ok then "success" else "error")
+		end
+		task.delay(1, function()
+			if panels.Market.Frame.Visible then
+				refreshers.Market(true)
+			end
+		end)
+	end)
+	restock.Parent = p.Frame
+	refreshers.Market = function()
+		task.spawn(function()
+			local ok, view = pcall(function()
+				return Remotes.Func("GetMarket"):InvokeServer()
+			end)
+			if ok and view then
+				marketView = view
+				renderMarket()
+			end
+		end)
+	end
+	-- Conto alla rovescia del rifornimento.
+	task.spawn(function()
+		while true do
+			local now = Workspace:GetServerTimeNow()
+			local nextAt = (Market.Window(now) + 1) * Market.RestockSeconds
+			p.Sub.Text = "New potions and full stock in " .. Format.Time(nextAt - now) .. " · potions go to your inventory"
+			task.wait(1)
+		end
+	end)
+end
+
+---------------------------------------------------------------- Pozioni
+local function refreshPotions()
+	local p = panels.Potions
+	local data = State.Data
+	if not p.Frame.Visible or not data then
+		return
+	end
+	clearBody(p.Body)
+	local any = false
+	for i, name in Potions.Order do
+		local count = data.Potions and data.Potions[name] or 0
+		if count > 0 then
+			any = true
+			local potion = Potions.List[name]
+			local row = new("Frame", { BackgroundColor3 = C.Panel2, Size = UDim2.new(1, -6, 0, 70), LayoutOrder = i, Parent = p.Body }, { corner(12) })
+			local badge = potionBadge(row, potion, UDim2.fromOffset(50, 50))
+			badge.Position = UDim2.fromOffset(10, 10)
+			label({ Text = potion.Name .. "  ×" .. count, Font = DISPLAY, TextSize = 18, Position = UDim2.fromOffset(72, 10), Size = UDim2.new(1, -200, 0, 24), Parent = row })
+			local active = data.Boosts and data.Boosts[potion.Boost]
+			local info = string.format("%s x%s for %s", potion.Boost, tostring(potion.Mult), Format.Time(potion.Seconds))
+			if active then
+				info ..= "  ·  active now: x" .. tostring(active.Mult) .. ", " .. Format.Time(active.Left) .. " left"
+			end
+			label({ Text = info, TextSize = 13, TextColor3 = C.Muted, TextWrapped = true, Position = UDim2.fromOffset(72, 36), Size = UDim2.new(1, -200, 0, 30), Parent = row })
+			local use = button({ Text = "Use", AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, -12, 0.5, 0), Size = UDim2.fromOffset(110, 40) }, C.Orange, function()
+				local ok, msg = Remotes.Func("UsePotion"):InvokeServer(name)
+				if ok then
+					UI.Toast(potion.Icon .. " " .. potion.Name .. " active!", "success")
+				else
+					UI.Toast(msg or "Could not use it", "error")
+				end
+			end)
+			use.Parent = row
+		end
+	end
+	if not any then
+		label({ Text = "No potions yet.\nBuy them at the 🧪 market on every island, or win them from 🎁 gifts.", TextSize = 16, TextColor3 = C.Muted, TextWrapped = true, TextXAlignment = Enum.TextXAlignment.Center, Size = UDim2.new(1, 0, 0, 80), Parent = p.Body })
+	end
+end
+
+local function buildPotionsPanel()
+	local p = makePanel("Potions", "🧪 Your Potions")
+	p.Sub.Text = "Use a potion when you need it. Using the same kind again adds more time."
+	new("UIListLayout", { Padding = UDim.new(0, 8), SortOrder = Enum.SortOrder.LayoutOrder, Parent = p.Body })
+	refreshers.Potions = refreshPotions
+end
+
+---------------------------------------------------------------- Regali
+local giftState = nil
+local giftFetchedAt = 0
+local giftButtonLabel, giftDot
+
+local function giftLeft(i)
+	if not giftState then
+		return math.huge
+	end
+	local g = giftState.Gifts[i]
+	return math.max(0, g.Left - (os.clock() - giftFetchedAt))
+end
+
+local function giftText(gift)
+	if gift.Coins then
+		return "🪙", "Coins"
+	elseif gift.Gems then
+		return "💎", gift.Gems .. " Gems"
+	elseif gift.Potion then
+		local potion = Potions.List[gift.Potion]
+		return potion.Icon, potion.Name
+	elseif gift.FreeEggs then
+		return "🥚", gift.FreeEggs .. " Free Eggs"
+	end
+	return "🎁", "Gift"
+end
+
+local function fetchGifts()
+	local ok, view = pcall(function()
+		return Remotes.Func("GetGifts"):InvokeServer()
+	end)
+	if ok and view then
+		giftState = view
+		giftFetchedAt = os.clock()
+	end
+end
+
+local giftCells = {}
+local function renderGifts()
+	local p = panels.Gifts
+	if not p.Frame.Visible or not giftState then
+		return
+	end
+	for i, gift in Gifts.List do
+		local cell = giftCells[i]
+		if not cell then
+			local icon, text = giftText(gift)
+			local frame = new("Frame", { BackgroundColor3 = C.Panel2, LayoutOrder = i, Parent = p.Body }, { corner(14) })
+			local st = stroke(C.Panel, 2)
+			st.Parent = frame
+			label({ Text = icon, TextSize = 34, TextXAlignment = Enum.TextXAlignment.Center, Position = UDim2.fromOffset(0, 8), Size = UDim2.new(1, 0, 0, 44), Parent = frame })
+			label({ Text = text, Font = DISPLAY, TextSize = 14, TextWrapped = true, TextXAlignment = Enum.TextXAlignment.Center, Position = UDim2.fromOffset(6, 52), Size = UDim2.new(1, -12, 0, 34), Parent = frame })
+			local b = button({ Text = "", Position = UDim2.new(0, 8, 1, -40), Size = UDim2.new(1, -16, 0, 32), TextSize = 15 }, C.Panel, function()
+				if giftLeft(i) > 0 or giftState.Gifts[i].Claimed then
+					return
+				end
+				local result = Remotes.Func("ClaimGift"):InvokeServer(i)
+				if not result.Ok then
+					UI.Toast(result.Error or "Not ready", "error")
+					return
+				end
+				giftState = result.State
+				giftFetchedAt = os.clock()
+				local r = result.Reward
+				local parts = {}
+				if r.Coins then
+					table.insert(parts, "+" .. Format.Number(r.Coins) .. " coins")
+				end
+				if r.Gems then
+					table.insert(parts, "+" .. r.Gems .. " gems")
+				end
+				if r.Potion then
+					table.insert(parts, r.Potion)
+				end
+				if #parts > 0 then
+					UI.Toast("🎁 " .. table.concat(parts, " · "), "success")
+				end
+				Sfx.Play("Reveal")
+				if r.Hatch and #r.Hatch > 0 then
+					UI.ShowHatch(r.Hatch, r.Island)
+				end
+				renderGifts()
+			end)
+			b.Parent = frame
+			cell = { Frame = frame, Button = b, Stroke = st }
+			giftCells[i] = cell
+		end
+		local g = giftState.Gifts[i]
+		local left = giftLeft(i)
+		if g.Claimed then
+			cell.Button.Text = "✓ Claimed"
+			cell.Button.BackgroundColor3 = C.Panel
+			cell.Stroke.Color = C.Panel
+			cell.Frame.BackgroundTransparency = 0.5
+		elseif left <= 0 then
+			cell.Button.Text = "Claim!"
+			cell.Button.BackgroundColor3 = C.Robux
+			cell.Stroke.Color = C.Gold
+			cell.Frame.BackgroundTransparency = 0
+		else
+			cell.Button.Text = Format.Time(left)
+			cell.Button.BackgroundColor3 = C.Panel
+			cell.Stroke.Color = C.Panel
+			cell.Frame.BackgroundTransparency = 0
+		end
+	end
+end
+
+local function buildGiftsPanel()
+	local p = makePanel("Gifts", "🎁 Gifts")
+	p.Sub.Text = "Free gifts while you play. They start again every time you join."
+	new("UIGridLayout", { CellSize = UDim2.fromOffset(130, 140), CellPadding = UDim2.fromOffset(8, 8), SortOrder = Enum.SortOrder.LayoutOrder, HorizontalAlignment = Enum.HorizontalAlignment.Center, Parent = p.Body })
+	local all = button({ Text = "Open all now · R$ " .. Products.List.UnlockAllGifts.Price, AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -60, 0, 12), Size = UDim2.fromOffset(200, 36), TextSize = 15 }, C.Robux, function()
+		local ok, msg = Remotes.Func("BuyProduct"):InvokeServer("UnlockAllGifts")
+		if msg then
+			UI.Toast(msg, if ok then "success" else "error")
+		end
+		task.delay(1, function()
+			fetchGifts()
+			renderGifts()
+		end)
+	end)
+	all.Parent = p.Frame
+	refreshers.Gifts = function()
+		task.spawn(function()
+			fetchGifts()
+			renderGifts()
+		end)
+		renderGifts()
+	end
+end
+
+-- Pulsante dei regali: mostra quanto manca al prossimo, e un pallino rosso quando ce n'è uno pronto.
+local function updateGiftButton()
+	if not giftState or not giftButtonLabel then
+		return
+	end
+	local ready, nextLeft = 0, math.huge
+	for i in Gifts.List do
+		if not giftState.Gifts[i].Claimed then
+			local left = giftLeft(i)
+			if left <= 0 then
+				ready += 1
+			else
+				nextLeft = math.min(nextLeft, left)
+			end
+		end
+	end
+	if ready > 0 then
+		giftButtonLabel.Text = "🎁\n" .. ready .. " ready!"
+		giftDot.Visible = true
+	elseif nextLeft < math.huge then
+		giftButtonLabel.Text = "🎁\n" .. Format.Time(nextLeft)
+		giftDot.Visible = false
+	else
+		giftButtonLabel.Text = "🎁\nAll done"
+		giftDot.Visible = false
+	end
 end
 
 ---------------------------------------------------------------- HUD
@@ -625,18 +1057,24 @@ local function buildHud()
 		player:GetAttributeChangedSignal(attr):Connect(refreshStatus)
 	end
 
-	local side = new("Frame", { BackgroundTransparency = 1, AnchorPoint = Vector2.new(0, 0.5), Position = UDim2.new(0, 14, 0.55, 0), Size = UDim2.fromOffset(80, 260), Parent = hud }, {
-		new("UIListLayout", { Padding = UDim.new(0, 10), SortOrder = Enum.SortOrder.LayoutOrder }),
+	local side = new("Frame", { BackgroundTransparency = 1, AnchorPoint = Vector2.new(0, 0.5), Position = UDim2.new(0, 14, 0.58, 0), Size = UDim2.fromOffset(170, 230), Parent = hud }, {
+		new("UIGridLayout", { CellSize = UDim2.fromOffset(78, 70), CellPadding = UDim2.fromOffset(10, 10), SortOrder = Enum.SortOrder.LayoutOrder }),
 	})
 	local function sideButton(text, color, order, panel)
-		local b = button({ Text = text, TextSize = 15, TextWrapped = true, Size = UDim2.fromOffset(78, 70), LayoutOrder = order }, color, function()
+		local b = button({ Text = text, TextSize = 15, TextWrapped = true, LayoutOrder = order }, color, function()
 			UI.Open(panel)
 		end)
 		b.Parent = side
+		return b
 	end
 	sideButton("🐉\nDragons", C.Orange, 1, "Dragons")
 	sideButton("🛒\nShop", C.Robux, 2, "Shop")
-	sideButton("♻️\nRebirth", C.Blue, 3, "Rebirth")
+	local gifts = sideButton("🎁\nGifts", Color3.fromRGB(230, 80, 140), 3, "Gifts")
+	sideButton("🧪\nPotions", Color3.fromRGB(150, 90, 230), 4, "Potions")
+	sideButton("🏪\nMarket", Color3.fromRGB(240, 150, 50), 5, "Market")
+	sideButton("♻️\nRebirth", C.Blue, 6, "Rebirth")
+	giftButtonLabel = gifts
+	giftDot = new("Frame", { BackgroundColor3 = C.Red, AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, 4, 0, -4), Size = UDim2.fromOffset(16, 16), Visible = false, Parent = gifts }, { corner(999), stroke(Color3.new(1, 1, 1), 2) })
 
 	toastHolder = new("Frame", { BackgroundTransparency = 1, AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 62), Size = UDim2.fromOffset(360, 200), Parent = gui }, {
 		new("UIListLayout", { Padding = UDim.new(0, 6), SortOrder = Enum.SortOrder.LayoutOrder, HorizontalAlignment = Enum.HorizontalAlignment.Center }),
@@ -657,6 +1095,9 @@ function UI.Start()
 	buildDragonsPanel()
 	buildShopPanel()
 	buildRebirthPanel()
+	buildMarketPanel()
+	buildPotionsPanel()
+	buildGiftsPanel()
 
 	State.Changed:Connect(function(data, full)
 		refreshHud(data)
@@ -666,6 +1107,36 @@ function UI.Start()
 			refreshShop()
 		elseif openPanel == "Rebirth" then
 			refreshers.Rebirth()
+		elseif openPanel == "Potions" then
+			refreshPotions()
+		elseif openPanel == "Market" then
+			renderMarket()
+		end
+	end)
+
+	-- Regali: chiede lo stato al server ogni 30 s e aggiorna il conto alla rovescia ogni secondo.
+	-- Mercato: avvisa quando arriva il rifornimento.
+	task.spawn(function()
+		local lastFetch = 0
+		local lastWindow = Market.Window(Workspace:GetServerTimeNow())
+		while true do
+			if os.clock() - lastFetch > 30 then
+				lastFetch = os.clock()
+				task.spawn(fetchGifts)
+			end
+			updateGiftButton()
+			if openPanel == "Gifts" then
+				renderGifts()
+			end
+			local window = Market.Window(Workspace:GetServerTimeNow())
+			if window ~= lastWindow then
+				lastWindow = window
+				UI.Toast("🧪 The potion market has restocked!", "info")
+				if openPanel == "Market" then
+					refreshers.Market()
+				end
+			end
+			task.wait(1)
 		end
 	end)
 	if State.Data then

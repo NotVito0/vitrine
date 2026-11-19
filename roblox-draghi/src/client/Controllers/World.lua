@@ -12,6 +12,7 @@ local Format = require(Shared.Format)
 local Remotes = require(Shared.Remotes)
 
 local State = require(script.Parent.State)
+local Sfx = require(script.Parent.Sfx)
 
 local World = {}
 
@@ -69,11 +70,55 @@ local function floatText(position, text, color)
 	Debris:AddItem(anchor, 1)
 end
 
+-- Monete che saltano fuori dal mostro e volano verso il giocatore.
+local function flyCoins(from, count, withGems)
+	local character = player.Character
+	local root = character and character:FindFirstChild("HumanoidRootPart")
+	if not root or (root.Position - from).Magnitude > 120 then
+		return
+	end
+	for i = 1, count do
+		local coin = Instance.new("Part")
+		coin.Anchored = true
+		coin.CanCollide = false
+		coin.CanQuery = false
+		coin.CanTouch = false
+		coin.CastShadow = false
+		coin.Shape = Enum.PartType.Cylinder
+		coin.Size = Vector3.new(0.25, 1.1, 1.1)
+		coin.Material = Enum.Material.Neon
+		coin.Color = if withGems and i <= 2 then Color3.fromRGB(192, 140, 255) else Color3.fromRGB(255, 200, 61)
+		coin.CFrame = CFrame.new(from)
+		coin.Parent = workspace
+		local pop = from + Vector3.new(math.random(-30, 30) / 10, math.random(25, 45) / 10, math.random(-30, 30) / 10)
+		local up = TweenService:Create(coin, TweenInfo.new(0.28, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { CFrame = CFrame.new(pop) * CFrame.Angles(0, math.random() * 6, math.rad(90)) })
+		up:Play()
+		up.Completed:Connect(function()
+			task.wait(0.05 * i)
+			local start = os.clock()
+			local startPos = coin.Position
+			local conn
+			conn = RunService.RenderStepped:Connect(function()
+				local t = math.min(1, (os.clock() - start) / 0.35)
+				local target = if root.Parent then root.Position else startPos
+				coin.CFrame = CFrame.new(startPos:Lerp(target, t * t)) * CFrame.Angles(0, t * 10, math.rad(90))
+				if t >= 1 then
+					conn:Disconnect()
+					coin:Destroy()
+					Sfx.Play("Coin")
+				end
+			end)
+		end)
+	end
+end
+
 local hatching = false
 local function onPrompt(prompt)
 	local eggIsland = prompt:GetAttribute("EggIsland")
 	local gateIsland = prompt:GetAttribute("GateIsland")
-	if eggIsland then
+	if prompt:GetAttribute("OpenMarket") then
+		UI.Open("Market")
+	elseif eggIsland then
 		if hatching then
 			return
 		end
@@ -82,7 +127,7 @@ local function onPrompt(prompt)
 		local result = Remotes.Func("Hatch"):InvokeServer(eggIsland, amount)
 		hatching = false
 		if result.Ok then
-			UI.ShowHatch(result.Results)
+			UI.ShowHatch(result.Results, result.Island)
 		elseif result.Error == "coins" then
 			UI.NeedCoins(result.Missing)
 		elseif result.Error == "full" then
@@ -112,6 +157,7 @@ function World.Start(ui)
 	ProximityPromptService.PromptTriggered:Connect(onPrompt)
 
 	Remotes.Event("Reward").OnClientEvent:Connect(function(reward)
+		flyCoins(reward.Position, if reward.Gems > 0 then 7 else 5, reward.Gems > 0)
 		if reward.Coins > 0 then
 			floatText(reward.Position, "+" .. Format.Number(reward.Coins) .. " 🪙", Color3.fromRGB(255, 216, 94))
 		end

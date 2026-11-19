@@ -16,6 +16,13 @@ da solo in italiano, spagnolo, portoghese e altre lingue. I commenti nel codice 
 - **40 draghi** dalle uova in 5 rarità, più 4 esclusivi del negozio. Uno su 50 nasce brillante.
 - **Probabilità sempre visibili** sopra ogni uovo, come chiede Roblox.
 - **Rinascita**: ricominci le isole, tieni i draghi e guadagni più monete per sempre.
+- **Mercato delle pozioni** su ogni isola: 4 pozioni che cambiano ogni 5 minuti (uguali in tutti i server),
+  con scorte limitate e pozioni rare (Shiny, Super Luck) che escono di rado. Rifornimento immediato a 15 R$.
+- **Regali a tempo**: 12 regali in un'ora di gioco (monete, cristalli, pozioni, uova gratis). Si possono
+  aprire tutti subito per 49 R$.
+- **Inventario pozioni**: le pozioni si usano quando vuoi; usarne un'altra uguale aggiunge tempo.
+- **Effetti**: schiusa animata (l'uovo trema, lampo, bagliore della rarità), numeri dei danni, mostri che
+  lampeggiano quando vengono colpiti, monete che volano verso di te, pannelli e pulsanti animati, suoni.
 - **Negozio**:
   - pass a livelli: Coins, Damage, Training, Luck (x2, poi x4, poi x8), Multi Hatch, Team Slots;
   - pass singoli: VIP e Fast Walk;

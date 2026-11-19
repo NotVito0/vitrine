@@ -37,6 +37,8 @@ local function template()
 		Purchases = {}, -- PurchaseId -> os.time(), per non dare due volte lo stesso acquisto
 		OneTime = {}, -- pacchetti già comprati
 		Boosts = {}, -- nome -> { Expires, Mult }
+		Potions = {}, -- nome pozione -> quantità nell'inventario
+		Market = { Window = 0, Bought = {} }, -- acquisti nel mercato nella finestra attuale
 		BonusTeamSlots = 0,
 		Settings = { AutoEquip = true },
 		Stats = { MonstersDefeated = 0, EggsHatched = 0, CoinsEarned = 0 },

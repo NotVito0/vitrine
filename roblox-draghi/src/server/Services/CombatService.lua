@@ -119,7 +119,7 @@ local function tick(player, now)
 			local mult = Elements.Multiplier(def.Element, target.Def.Element)
 			local damage = DragonService.Power(entry.Dragon) * mult * damageMult
 			st.Next[entry.Uid] = now + Balance.AttackInterval * rng:NextNumber(0.85, 1.15)
-			Remotes.Event("AttackFx"):FireAllClients(player.UserId, slot, target.Model, def.Element, mult)
+			Remotes.Event("AttackFx"):FireAllClients(player.UserId, slot, target.Model, def.Element, mult, damage)
 			MonsterService.Damage(target, player, damage)
 		end
 	end

@@ -13,6 +13,8 @@ local Remotes = require(Shared.Remotes)
 local DataService = require(script.Parent.DataService)
 local DragonService = require(script.Parent.DragonService)
 local Boosts = require(script.Parent.Boosts)
+local MarketService = require(script.Parent.MarketService)
+local GiftService = require(script.Parent.GiftService)
 
 local ShopService = {}
 
@@ -100,6 +102,14 @@ function GRANT.CrystalDrake(player, data, info)
 	else
 		error("limited store unavailable")
 	end
+end
+
+function GRANT.MarketRestock(player, data)
+	MarketService.Restock(data)
+end
+
+function GRANT.UnlockAllGifts(player)
+	GiftService.UnlockAll(player)
 end
 
 local function grantGeneric(player, data, info)

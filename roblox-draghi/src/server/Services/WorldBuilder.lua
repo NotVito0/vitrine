@@ -221,6 +221,32 @@ local function buildTraining(folder, island, index, pos)
 	end
 end
 
+-- Banco del mercato: tenda a strisce, bancone e boccette colorate.
+local function buildMarket(folder, pos)
+	local market = Instance.new("Model")
+	market.Name = "Market"
+	market.Parent = folder
+	local wood = Color3.fromRGB(140, 96, 58)
+	local counter = part({ Parent = market, Name = "Counter", Size = Vector3.new(14, 3.6, 4), Position = pos + Vector3.new(0, 1.8, 0), Color = wood, Material = Enum.Material.WoodPlanks })
+	for _, x in { -6.5, 6.5 } do
+		part({ Parent = market, Size = Vector3.new(0.8, 10, 0.8), Position = pos + Vector3.new(x, 5, -1.6), Color = wood, Material = Enum.Material.Wood })
+		part({ Parent = market, Size = Vector3.new(0.8, 10, 0.8), Position = pos + Vector3.new(x, 5, 3), Color = wood, Material = Enum.Material.Wood })
+	end
+	for i = 0, 6 do
+		local color = if i % 2 == 0 then Color3.fromRGB(255, 90, 110) else Color3.fromRGB(255, 245, 235)
+		part({ Parent = market, Size = Vector3.new(2.1, 0.4, 6.4), CFrame = CFrame.new(pos + Vector3.new(-6.3 + i * 2.1, 10.4, 0.7)) * CFrame.Angles(math.rad(-12), 0, 0), Color = color, Material = Enum.Material.Fabric })
+	end
+	local colors = { Color3.fromRGB(90, 220, 120), Color3.fromRGB(255, 205, 70), Color3.fromRGB(255, 90, 90), Color3.fromRGB(80, 170, 255), Color3.fromRGB(255, 160, 230), Color3.fromRGB(190, 120, 255) }
+	for i, c in colors do
+		local x = -5.5 + (i - 1) * 2.2
+		local bottle = part({ Parent = market, Shape = Enum.PartType.Ball, Size = Vector3.one * 1.3, Position = pos + Vector3.new(x, 4.25, 0), Color = c, Material = Enum.Material.Neon, CanCollide = false })
+		bottle.Transparency = 0.1
+		part({ Parent = market, Size = Vector3.new(0.4, 0.6, 0.4), Position = pos + Vector3.new(x, 5.1, 0), Color = Color3.fromRGB(230, 230, 240), Material = Enum.Material.Glass, CanCollide = false })
+	end
+	billboard(counter, "🧪 POTION MARKET\nRestocks every 5 minutes", UDim2.fromOffset(240, 60), Vector3.new(0, 11, 0), Color3.fromRGB(255, 220, 240), 120)
+	prompt(counter, "Shop", "Potion Market", Enum.KeyCode.E, { OpenMarket = true })
+end
+
 local function buildGate(folder, toIndex, x)
 	local island = Islands.Get(toIndex)
 	local gate = part({ Parent = folder, Name = "Gate", Size = Vector3.new(2, 18, 20), Position = Vector3.new(x, 9, 0), Color = Color3.fromRGB(255, 200, 60), Material = Enum.Material.ForceField, Transparency = 0.1 })
@@ -267,8 +293,11 @@ function WorldBuilder.Build()
 		local trainingPos = center + Vector3.new(32, 0, -34)
 		buildEgg(folder, island, index, eggPos)
 		buildTraining(folder, island, index, trainingPos)
+		local marketPos = center + Vector3.new(-34, 0, 34)
+		buildMarket(folder, marketPos)
 
 		local keepAway = {
+			{ Pos = marketPos, R = 14 },
 			{ Pos = eggPos, R = 14 },
 			{ Pos = trainingPos, R = WorldBuilder.TrainingRadius + 6 },
 			{ Pos = center + Vector3.new(0, 0, 20), R = 14 }, -- zona di arrivo

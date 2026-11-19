@@ -9,6 +9,7 @@ local Debris = game:GetService("Debris")
 local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
 local DragonModel = require(Shared.DragonModel)
 local Elements = require(Shared.Config.Elements)
+local Format = require(Shared.Format)
 local Remotes = require(Shared.Remotes)
 
 local DragonVisuals = {}
@@ -111,7 +112,59 @@ local function burst(position, color)
 	Debris:AddItem(ball, 0.35)
 end
 
-local function onAttack(userId, slot, monster, element, mult)
+-- Il mostro colpito lampeggia di bianco.
+local function hitFlash(monster)
+	local old = monster:FindFirstChild("HitFlash")
+	if old then
+		old:Destroy()
+	end
+	local h = Instance.new("Highlight")
+	h.Name = "HitFlash"
+	h.FillColor = Color3.new(1, 1, 1)
+	h.FillTransparency = 0.25
+	h.OutlineTransparency = 1
+	h.DepthMode = Enum.HighlightDepthMode.Occluded
+	h.Parent = monster
+	TweenService:Create(h, TweenInfo.new(0.18), { FillTransparency = 1 }):Play()
+	Debris:AddItem(h, 0.2)
+end
+
+-- Numeri dei danni, solo per i propri attacchi. Più grandi e gialli se l'elemento è forte.
+local function damageNumber(position, damage, mult)
+	local anchor = Instance.new("Part")
+	anchor.Anchored = true
+	anchor.CanCollide = false
+	anchor.CanQuery = false
+	anchor.CanTouch = false
+	anchor.Transparency = 1
+	anchor.Size = Vector3.one * 0.2
+	anchor.Position = position + Vector3.new(math.random(-15, 15) / 10, 1.5, math.random(-15, 15) / 10)
+	anchor.Parent = folder
+	local gui = Instance.new("BillboardGui")
+	gui.Size = UDim2.fromOffset(120, 36)
+	gui.AlwaysOnTop = true
+	gui.LightInfluence = 0
+	gui.MaxDistance = 80
+	local text = Instance.new("TextLabel")
+	text.BackgroundTransparency = 1
+	text.Size = UDim2.fromScale(1, 1)
+	text.Font = Enum.Font.FredokaOne
+	text.TextScaled = true
+	text.TextStrokeTransparency = 0.15
+	text.TextColor3 = if mult > 1 then Color3.fromRGB(255, 220, 70) elseif mult < 1 then Color3.fromRGB(170, 180, 200) else Color3.new(1, 1, 1)
+	text.Text = Format.Number(damage) .. (if mult > 1 then "!" else "")
+	text.Parent = gui
+	gui.Parent = anchor
+	local scale = Instance.new("UIScale")
+	scale.Scale = if mult > 1 then 1.5 else 0.6
+	scale.Parent = text
+	TweenService:Create(scale, TweenInfo.new(0.2, Enum.EasingStyle.Back), { Scale = if mult > 1 then 1.15 else 0.85 }):Play()
+	TweenService:Create(anchor, TweenInfo.new(0.7, Enum.EasingStyle.Quad), { Position = anchor.Position + Vector3.new(0, 4, 0) }):Play()
+	TweenService:Create(text, TweenInfo.new(0.7, Enum.EasingStyle.Quad, Enum.EasingDirection.In), { TextTransparency = 1, TextStrokeTransparency = 1 }):Play()
+	Debris:AddItem(anchor, 0.75)
+end
+
+local function onAttack(userId, slot, monster, element, mult, damage)
 	local player = Players:GetPlayerByUserId(userId)
 	local entry = player and rigs[player]
 	local d = entry and entry.Dragons[slot]
@@ -142,6 +195,12 @@ local function onAttack(userId, slot, monster, element, mult)
 	tween.Completed:Connect(function()
 		orb:Destroy()
 		burst(target, el.Color2)
+		if monster.Parent then
+			hitFlash(monster)
+		end
+		if player == Players.LocalPlayer and damage then
+			damageNumber(target, damage, mult)
+		end
 	end)
 	tween:Play()
 end

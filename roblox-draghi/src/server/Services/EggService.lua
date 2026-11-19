@@ -81,25 +81,35 @@ function EggService.Start()
 		amount = math.min(amount, space)
 
 		data.Coins -= island.EggCost * amount
-		local luck = Boosts.Luck(player, data)
-		local weights = EggService.Weights(island, luck)
-		local shinyChance = Balance.ShinyChance * (if luck > 1 then 1.5 else 1)
-		local results = {}
-		for _ = 1, amount do
-			local id = roll(weights)
-			local shiny = rng:NextNumber() < shinyChance
-			local uid, _, isNew = DragonService.Add(player, id, { Shiny = shiny, SkipEquip = true })
-			if uid then
-				data.Stats.EggsHatched += 1
-				table.insert(results, { Id = id, Shiny = shiny, New = isNew, Rarity = Dragons.Get(id).Rarity })
-			end
-		end
-		if data.Settings.AutoEquip then
-			DragonService.EquipBest(player)
-		end
-		DataService.MarkDirty(player, true)
-		return { Ok = true, Results = results }
+		return { Ok = true, Results = EggService.Grant(player, islandIndex, amount), Island = islandIndex }
 	end
+end
+
+-- Schiude `amount` uova dell'isola senza farle pagare (usato anche dai regali).
+function EggService.Grant(player, islandIndex: number, amount: number)
+	local data = DataService.Get(player)
+	local island = Islands.Get(islandIndex)
+	local results = {}
+	if not data or not island then
+		return results
+	end
+	local luck = Boosts.Luck(player, data)
+	local weights = EggService.Weights(island, luck)
+	local shinyChance = Balance.ShinyChance * (if luck > 1 then 1.5 else 1) * Boosts.Active(data, "Shiny")
+	for _ = 1, amount do
+		local id = roll(weights)
+		local shiny = rng:NextNumber() < shinyChance
+		local uid, _, isNew = DragonService.Add(player, id, { Shiny = shiny, SkipEquip = true, Force = true })
+		if uid then
+			data.Stats.EggsHatched += 1
+			table.insert(results, { Id = id, Shiny = shiny, New = isNew, Rarity = Dragons.Get(id).Rarity })
+		end
+	end
+	if data.Settings.AutoEquip then
+		DragonService.EquipBest(player)
+	end
+	DataService.MarkDirty(player, true)
+	return results
 end
 
 return EggService

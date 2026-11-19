@@ -13,6 +13,11 @@ local FUNCTIONS = {
 	"BuyProduct",
 	"Rebirth",
 	"GetShopState",
+	"GetMarket",
+	"BuyMarket",
+	"UsePotion",
+	"GetGifts",
+	"ClaimGift",
 }
 
 local folder

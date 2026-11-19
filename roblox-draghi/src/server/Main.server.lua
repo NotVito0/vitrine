@@ -12,12 +12,16 @@ local TrainingService = require(Services.TrainingService)
 local EggService = require(Services.EggService)
 local IslandService = require(Services.IslandService)
 local ShopService = require(Services.ShopService)
+local MarketService = require(Services.MarketService)
+local GiftService = require(Services.GiftService)
 
 WorldBuilder.Build()
 
 -- Prima i sistemi che rispondono al client, poi quelli che caricano i giocatori.
 DragonService.Start()
 EggService.Start()
+MarketService.Start()
+GiftService.Start()
 IslandService.Start()
 ShopService.Start()
 SyncService.Start()

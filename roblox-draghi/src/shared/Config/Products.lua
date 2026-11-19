@@ -107,6 +107,10 @@ Products.List = {
 	CoinsSmall = { Id = 0, Price = 9, Section = "Coins", Title = "Coin Pouch", Icon = "🪙", EggsWorth = 5, Description = "Coins worth 5 eggs of your best island" },
 	CoinsMedium = { Id = 0, Price = 49, Section = "Coins", Title = "Coin Sack", Icon = "🪙", EggsWorth = 30, Description = "Coins worth 30 eggs of your best island" },
 	CoinsLarge = { Id = 0, Price = 199, Section = "Coins", Title = "Coin Vault", Icon = "🪙", EggsWorth = 150, Description = "Coins worth 150 eggs · best value", Best = true },
+
+	-- Venduti dentro il mercato e i regali, non nel negozio.
+	MarketRestock = { Id = 0, Price = 15, Section = "Hidden", Title = "Instant Restock", Icon = "🔄", Description = "Refill the market stock right now" },
+	UnlockAllGifts = { Id = 0, Price = 49, Section = "Hidden", Title = "Unlock All Gifts", Icon = "🎁", Description = "Open every gift of this session now" },
 }
 
 Products.Sections = {
