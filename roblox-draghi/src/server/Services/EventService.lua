@@ -303,7 +303,7 @@ local function onCommand(player, text)
 	Remotes.Event("Notify"):FireClient(player, result, "success")
 	-- Lo stesso evento parte in tutti gli altri server.
 	pcall(function()
-		MessagingService:PublishAsync("AdminCommand", { Arg = arg, Now = now })
+		MessagingService:PublishAsync("AdminCommand", { Arg = arg, Now = now, From = game.JobId })
 	end)
 end
 
@@ -311,7 +311,9 @@ local function setupCommands()
 	pcall(function()
 		MessagingService:SubscribeAsync("AdminCommand", function(message)
 			local data = message.Data
-			if type(data) == "table" and data.Arg then
+			-- Il server che ha lanciato il comando riceve anche il proprio messaggio: lo ignora,
+			-- altrimenti l'evento partirebbe due volte (e i moltiplicatori si moltiplicherebbero).
+			if type(data) == "table" and data.Arg and data.From ~= game.JobId then
 				runCommand(data.Arg, math.floor(data.Now or workspace:GetServerTimeNow()))
 			end
 		end)

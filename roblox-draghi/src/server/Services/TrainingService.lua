@@ -25,8 +25,13 @@ end
 
 function TrainingService.Start()
 	task.spawn(function()
+		local tickCount = 0
 		while true do
 			task.wait(1)
+			tickCount += 1
+			-- L'inventario completo (con le barre dell'esperienza) si manda ogni 8 secondi
+			-- o quando un drago sale di livello, non ogni secondo: risparmia rete sui telefoni.
+			local sendFull = tickCount % 8 == 0
 			for _, player in Players:GetPlayers() do
 				local data = DataService.Get(player)
 				local character = player.Character
@@ -48,7 +53,7 @@ function TrainingService.Start()
 							leveled = true
 						end
 					end
-					DataService.MarkDirty(player, true)
+					DataService.MarkDirty(player, leveled or sendFull)
 					if leveled then
 						Remotes.Event("LevelUp"):FireClient(player)
 						if data.Settings.AutoEquip then

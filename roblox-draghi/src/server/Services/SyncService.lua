@@ -77,7 +77,7 @@ local function snapshot(player, data, full)
 		out.Dragons = dragons
 		out.Equipped = data.Equipped
 		out.Discovered = data.Discovered
-		out.InventoryMax = Balance.MaxInventory
+		out.InventoryMax = DragonService.InventoryMax(player)
 	end
 	return out
 end
@@ -158,6 +158,29 @@ function SyncService.Start()
 			if now - (lastFull[player] or 0) >= FULL_INTERVAL then
 				SyncService.Push(player, true)
 			end
+		end
+	end)
+
+	-- Ogni 30 secondi conta gli amici presenti nello stesso server (bonus amici).
+	task.spawn(function()
+		while true do
+			local list = Players:GetPlayers()
+			for _, p in list do
+				local count = 0
+				for _, other in list do
+					if other ~= p then
+						local ok, isFriend = pcall(p.IsFriendsWith, p, other.UserId)
+						if ok and isFriend then
+							count += 1
+						end
+					end
+				end
+				if p.Parent and p:GetAttribute("FriendsHere") ~= count then
+					p:SetAttribute("FriendsHere", count)
+					DataService.MarkDirty(p, false)
+				end
+			end
+			task.wait(30)
 		end
 	end)
 

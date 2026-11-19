@@ -74,7 +74,7 @@ function EggService.Start()
 			return { Ok = false, Error = "coins", Missing = island.EggCost - data.Coins }
 		end
 		amount = math.min(amount, affordable)
-		local space = Balance.MaxInventory - DragonService.Count(data)
+		local space = DragonService.InventoryMax(player) - DragonService.Count(data)
 		if space < 1 then
 			return { Ok = false, Error = "full" }
 		end

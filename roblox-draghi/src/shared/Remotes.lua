@@ -57,8 +57,54 @@ function Remotes.Event(name: string): RemoteEvent
 	return folder:WaitForChild(name)
 end
 
-function Remotes.Func(name: string): RemoteFunction
-	return folder:WaitForChild(name)
+-- Limite di richieste per giocatore: chi ne manda più di LIMIT al secondo alla stessa funzione
+-- (solo chi usa trucchi) viene ignorato. Un giocatore normale non ci arriva mai.
+local LIMIT = 15
+local counts = {}
+
+local function allowed(player, name)
+	local now = os.clock()
+	local key = name
+	local perPlayer = counts[player]
+	if not perPlayer then
+		perPlayer = {}
+		counts[player] = perPlayer
+		player.AncestryChanged:Connect(function(_, parent)
+			if not parent then
+				counts[player] = nil
+			end
+		end)
+	end
+	local entry = perPlayer[key]
+	if not entry or now - entry.Start >= 1 then
+		perPlayer[key] = { Start = now, Count = 1 }
+		return true
+	end
+	entry.Count += 1
+	return entry.Count <= LIMIT
+end
+
+function Remotes.Func(name: string)
+	local remote = folder:WaitForChild(name)
+	if not RunService:IsServer() then
+		return remote
+	end
+	-- Sul server: impostare OnServerInvoke aggiunge da solo il limite di richieste.
+	return setmetatable({}, {
+		__newindex = function(_, key, fn)
+			if key == "OnServerInvoke" then
+				remote.OnServerInvoke = function(player, ...)
+					if not allowed(player, name) then
+						return nil
+					end
+					return fn(player, ...)
+				end
+			else
+				remote[key] = fn
+			end
+		end,
+		__index = remote,
+	})
 end
 
 return Remotes

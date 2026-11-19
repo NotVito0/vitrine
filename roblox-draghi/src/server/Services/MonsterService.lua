@@ -1,4 +1,5 @@
 -- I mostri delle isole: nascono, girano, perdono vita e rinascono dopo qualche secondo.
+local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 
@@ -276,6 +277,21 @@ end
 
 local acc = 0
 local clock = 0
+local occupied = {}
+local occupiedAt = -1
+
+-- Isole con almeno un giocatore sopra o vicino: solo lì i mostri si muovono (risparmia server).
+local function refreshOccupied()
+	occupied = {}
+	for _, player in Players:GetPlayers() do
+		local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+		if root then
+			local index = math.floor(root.Position.X / WorldBuilder.Spacing + 0.5) + 1
+			occupied[index] = true
+		end
+	end
+end
+
 local function step(dt)
 	acc += dt
 	clock += dt
@@ -284,7 +300,14 @@ local function step(dt)
 	end
 	local delta = acc
 	acc = 0
-	for _, list in byIsland do
+	if clock - occupiedAt > 1 then
+		occupiedAt = clock
+		refreshOccupied()
+	end
+	for index, list in byIsland do
+		if not occupied[index] then
+			continue
+		end
 		for _, m in list do
 			if m.Wait > 0 then
 				m.Wait -= delta

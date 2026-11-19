@@ -126,8 +126,13 @@ local function onPrompt(prompt)
 		end
 		hatching = true
 		local amount = prompt:GetAttribute("Amount")
-		local result = Remotes.Func("Hatch"):InvokeServer(eggIsland, amount)
+		local ok, result = pcall(function()
+			return Remotes.Func("Hatch"):InvokeServer(eggIsland, amount)
+		end)
 		hatching = false
+		if not ok or type(result) ~= "table" then
+			return
+		end
 		if result.Ok then
 			UI.ShowHatch(result.Results, result.Island)
 		elseif result.Error == "coins" then

@@ -137,7 +137,14 @@ local function tick(player, now)
 			local weatherMult = if weather and (def.Element == weather or def.Element2 == weather) then Boosts.WeatherBoost else 1
 			local damage = DragonService.Power(entry.Dragon) * mult * damageMult * weatherMult
 			st.Next[entry.Uid] = now + Balance.AttackInterval * rng:NextNumber(0.85, 1.15)
-			Remotes.Event("AttackFx"):FireAllClients(player.UserId, slot, target.Model, def.Element, mult, damage)
+			-- L'effetto dell'attacco solo a chi è abbastanza vicino da vederlo.
+			local attackFx = Remotes.Event("AttackFx")
+			for _, viewer in Players:GetPlayers() do
+				local viewerRoot = viewer.Character and viewer.Character:FindFirstChild("HumanoidRootPart")
+				if viewerRoot and (viewerRoot.Position - pos).Magnitude < 220 then
+					attackFx:FireClient(viewer, player.UserId, slot, target.Model, def.Element, mult, damage)
+				end
+			end
 			MonsterService.Damage(target, player, damage)
 		end
 	end

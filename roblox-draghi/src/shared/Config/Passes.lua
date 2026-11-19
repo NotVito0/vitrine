@@ -62,8 +62,17 @@ Passes.Tiers = {
 	},
 }
 
+Passes.Tiers.Storage = {
+	Title = "Storage",
+	Icon = "🎒",
+	Field = "Extra",
+	Describe = "+%s dragon slots",
+	{ Id = 0, Price = 79, Extra = 100 },
+	{ Id = 0, Price = 249, Extra = 250 },
+}
+
 -- L'ordine in cui compaiono nel negozio
-Passes.TierOrder = { "Coins", "Damage", "Training", "Luck", "HatchCount", "TeamSlots" }
+Passes.TierOrder = { "Coins", "Damage", "Training", "Luck", "HatchCount", "TeamSlots", "Storage" }
 
 Passes.Single = {
 	VIP = { Id = 0, Price = 249, Title = "VIP", Icon = "👑", Description = "+20% coins forever, VIP tag and VIP area" },

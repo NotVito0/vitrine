@@ -31,12 +31,21 @@ function Boosts.Active(data, name: string): number
 	return 1
 end
 
+-- Bonus social: +10% per ogni amico nello stesso server (massimo 3), e +10% per Roblox Premium.
+-- L'attributo FriendsHere lo aggiorna SyncService ogni 30 secondi.
+function Boosts.Social(player): number
+	local friends = math.min(3, player:GetAttribute("FriendsHere") or 0)
+	local premium = if player.MembershipType == Enum.MembershipType.Premium then 0.1 else 0
+	return 1 + friends * 0.1 + premium
+end
+
 function Boosts.Coins(player, data): number
 	local vip = if PassService.Has(player, "VIP") then 1 + Balance.VIPCoinBonus else 1
 	return PassService.Value(player, "Coins", 1)
 		* Boosts.Active(data, "Coins")
 		* (1 + data.Rebirths * Balance.RebirthBonus)
 		* vip
+		* Boosts.Social(player)
 		* Boosts.Global.Coins
 end
 

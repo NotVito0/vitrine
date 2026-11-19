@@ -24,7 +24,7 @@ end)
 local function announce(text)
 	Remotes.Event("Announce"):FireAllClients(text)
 	pcall(function()
-		MessagingService:PublishAsync("Announce", text)
+		MessagingService:PublishAsync("Announce", { Text = text, From = game.JobId })
 	end)
 end
 
@@ -86,7 +86,10 @@ end
 function NestService.Start()
 	pcall(function()
 		MessagingService:SubscribeAsync("Announce", function(message)
-			Remotes.Event("Announce"):FireAllClients(message.Data)
+			local data = message.Data
+			if type(data) == "table" and type(data.Text) == "string" and data.From ~= game.JobId then
+				Remotes.Event("Announce"):FireAllClients(data.Text)
+			end
 		end)
 	end)
 

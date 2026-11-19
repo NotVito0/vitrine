@@ -25,6 +25,10 @@ function DragonService.TeamSize(player): number
 	return Balance.BaseTeamSize + bonus + PassService.Value(player, "TeamSlots", 0)
 end
 
+function DragonService.InventoryMax(player): number
+	return Balance.MaxInventory + PassService.Value(player, "Storage", 0)
+end
+
 function DragonService.Count(data): number
 	local n = 0
 	for _ in data.Dragons do
@@ -81,7 +85,7 @@ function DragonService.Add(player, dragonId: string, opts)
 	if not data or not Dragons.Get(dragonId) then
 		return nil, "invalid"
 	end
-	if not opts.Force and DragonService.Count(data) >= Balance.MaxInventory then
+	if not opts.Force and DragonService.Count(data) >= DragonService.InventoryMax(player) then
 		return nil, "full"
 	end
 	local uid = tostring(data.NextUid)

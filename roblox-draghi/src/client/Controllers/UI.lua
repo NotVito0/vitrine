@@ -892,7 +892,7 @@ local function renderGifts()
 					return
 				end
 				local result = Remotes.Func("ClaimGift"):InvokeServer(i)
-				if not result.Ok then
+				if not result or not result.Ok then
 					UI.Toast(result.Error or "Not ready", "error")
 					return
 				end
@@ -1222,7 +1222,7 @@ local function renderDaily()
 			return
 		end
 		local result = Remotes.Func("ClaimDaily"):InvokeServer()
-		if result.Ok then
+		if result and result.Ok then
 			dailyView = result.View
 			UI.Toast("📅 Day " .. result.Day .. ": " .. result.Text, "success")
 			Sfx.Play("Reveal")
@@ -1231,7 +1231,7 @@ local function renderDaily()
 			end
 			renderDaily()
 		else
-			UI.Toast(result.Error or "Come back tomorrow", "error")
+			UI.Toast(result and result.Error or "Come back tomorrow", "error")
 		end
 	end)
 	claim.Parent = p.Body
