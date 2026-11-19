@@ -122,23 +122,51 @@ local function updateBar(m)
 	m.HpLabel.Text = Format.Number(math.max(0, m.Health))
 end
 
-local function spawnMonster(index)
+MonsterService.GoldMult = 1 -- "Golden Monsters" dell'admin abuse: monete x10 e mostri dorati
+MonsterService.Tint = nil -- colore degli eventi stagionali (Halloween arancione...)
+
+local GEM_DEF = { Name = "Crystal Golem", Element = "Light", Color = Color3.fromRGB(192, 140, 255), Size = 4.2, Shape = "box", Hp = 1.5, Coins = 0, Weight = 0 }
+
+local function displayColor(def)
+	if MonsterService.GoldMult > 1 then
+		return Color3.fromRGB(255, 205, 60)
+	end
+	if MonsterService.Tint and def.Coins > 0 then
+		return def.Color:Lerp(MonsterService.Tint, 0.45)
+	end
+	return def.Color
+end
+
+-- special: nil (normale), "gem" (mostro di cristallo che lascia cristalli) o "boss".
+local function spawnMonster(index, special)
 	local island = Islands.Get(index)
-	local def = pickDef(island)
-	local pos = WorldBuilder.RandomPoint(index, rng)
-	local model, fill, hp = buildModel(def, pos)
+	local def = if special == "gem" then GEM_DEF else pickDef(island)
+	if special == "boss" then
+		def = table.clone(def)
+		def.Name = "👹 GIANT " .. string.upper(def.Name)
+		def.Size = 16
+		def.Hp *= 400
+		def.Coins *= 300
+	end
+	local shown = table.clone(def)
+	shown.Color = displayColor(def)
+	local pos = if special == "boss" then WorldBuilder.Islands[index].Center + Vector3.new(0, 0, -6) else WorldBuilder.RandomPoint(index, rng)
+	local model, fill, hp = buildModel(shown, pos)
 	local maxHealth = math.floor(island.MonsterHp * def.Hp)
 	local m = {
 		Model = model,
 		Island = index,
 		Def = def,
+		Special = special,
+		Gems = if special == "gem" then math.max(2, index * 2) elseif special == "boss" then 25 * index else 0,
 		Health = maxHealth,
 		MaxHealth = maxHealth,
-		Coins = math.max(1, math.floor(island.MonsterCoins * def.Coins)),
+		Coins = math.max(if special == "gem" then 0 else 1, math.floor(island.MonsterCoins * def.Coins)),
 		Home = pos,
 		Pos = pos,
 		Target = pos,
 		Facing = rng:NextNumber(0, math.pi * 2),
+		Speed = if special == "boss" then 3 else 7,
 		Phase = rng:NextNumber(0, 6),
 		Wait = rng:NextNumber(0, 2),
 		Damagers = {},
@@ -174,11 +202,36 @@ local function die(m)
 	task.delay(0.4, function()
 		m.Model:Destroy()
 	end)
+	if m.Special then
+		return -- i mostri speciali degli eventi non rinascono
+	end
 	task.delay(Balance.MonsterRespawn, function()
-		if #byIsland[m.Island] < Balance.MonstersPerIsland then
+		local regular = 0
+		for _, other in byIsland[m.Island] do
+			if not other.Special then
+				regular += 1
+			end
+		end
+		if regular < Balance.MonstersPerIsland then
 			spawnMonster(m.Island)
 		end
 	end)
+end
+
+-- Fa comparire mostri speciali (eventi): "gem" o "boss".
+function MonsterService.SpawnSpecial(index: number, special: string)
+	return spawnMonster(index, special)
+end
+
+-- Ricolora i mostri normali (dopo che cambia GoldMult o Tint).
+function MonsterService.Recolor()
+	for _, list in byIsland do
+		for _, m in list do
+			if not m.Special and m.Model.PrimaryPart then
+				m.Model.PrimaryPart.Color = displayColor(m.Def)
+			end
+		end
+	end
 end
 
 -- Fa danni a un mostro. Ritorna true se l'ha sconfitto.
@@ -247,7 +300,7 @@ local function step(dt)
 						m.Target = candidate
 					end
 				else
-					local move = flat.Unit * math.min(flat.Magnitude, 7 * delta)
+					local move = flat.Unit * math.min(flat.Magnitude, m.Speed * delta)
 					m.Pos += move
 					m.Facing = math.atan2(-flat.X, -flat.Z)
 				end

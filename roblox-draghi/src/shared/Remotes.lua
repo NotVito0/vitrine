@@ -2,7 +2,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
-local EVENTS = { "DataSync", "AttackFx", "Reward", "Notify", "LevelUp", "Offer" }
+local EVENTS = { "DataSync", "AttackFx", "Reward", "Notify", "LevelUp", "Offer", "HatchFx", "Announce" }
 local FUNCTIONS = {
 	"Hatch",
 	"UnlockIsland",
@@ -18,6 +18,11 @@ local FUNCTIONS = {
 	"UsePotion",
 	"GetGifts",
 	"ClaimGift",
+	"StartNest",
+	"SkipNest",
+	"RedeemCode",
+	"GetDaily",
+	"ClaimDaily",
 }
 
 local folder

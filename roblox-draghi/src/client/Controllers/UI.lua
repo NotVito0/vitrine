@@ -557,6 +557,7 @@ end
 -- I draghi rari hanno un bagliore del colore della rarità e un suono più profondo.
 function UI.ShowHatch(results, islandIndex)
 	local island = Islands.Get(islandIndex or 1) or Islands.List[1]
+	local eggColor = if results[1] and results[1].Nest then Color3.fromRGB(220, 180, 255) else island.EggColor
 	local overlay = new("TextButton", { Text = "", AutoButtonColor = false, BackgroundColor3 = Color3.new(0, 0, 0), BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1), ZIndex = 20, Parent = gui })
 	TweenService:Create(overlay, TweenInfo.new(0.25), { BackgroundTransparency = 0.35 }):Play()
 	local holder = new("Frame", { BackgroundTransparency = 1, AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromScale(0.92, 0.62), ZIndex = 21, Parent = overlay }, {
@@ -574,7 +575,7 @@ function UI.ShowHatch(results, islandIndex)
 		local rarity = Dragons.Rarities[def.Rarity]
 		local card = new("Frame", { BackgroundTransparency = 1, Size = cardSize, ZIndex = 22, LayoutOrder = index, Parent = holder })
 		local eggHolder = new("Frame", { BackgroundTransparency = 1, AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.45), Size = UDim2.fromScale(0.9, 0.7), ZIndex = 22, Parent = card })
-		local eggVp = eggViewport(eggHolder, island.EggColor)
+		local eggVp = eggViewport(eggHolder, eggColor)
 		eggVp.ZIndex = 22
 		local eggCam = eggVp.CurrentCamera
 		local scaleIn = new("UIScale", { Scale = 0.3, Parent = card })
@@ -994,6 +995,329 @@ local function updateGiftButton()
 	end
 end
 
+---------------------------------------------------------------- Nido degli incroci
+local nestPicks = {}
+local nestUi = {}
+
+local function elementIcon(element)
+	local el = Elements.List[element]
+	return if el then el.Icon else "❔"
+end
+
+local function renderNest()
+	local p = panels.Nest
+	local data = State.Data
+	if not p.Frame.Visible or not data then
+		return
+	end
+	clearBody(p.Body)
+	local order = 0
+	local function o()
+		order += 1
+		return order
+	end
+
+	-- Le due caselle e il risultato
+	local top = new("Frame", { BackgroundColor3 = C.Panel2, Size = UDim2.new(1, -6, 0, 150), LayoutOrder = o(), Parent = p.Body }, { corner(14) })
+	local busy = data.Nest
+	local uids = if busy then { busy.A, busy.B } else nestPicks
+	for side = 1, 2 do
+		local uid = uids[side]
+		local d = uid and data.Dragons[uid]
+		local slot = new("TextButton", { Text = "", AutoButtonColor = not busy, BackgroundColor3 = C.Panel, Position = UDim2.new(if side == 1 then 0 else 0.62, 10, 0, 10), Size = UDim2.new(0.38, -20, 1, -20), Parent = top }, { corner(12), stroke(if d then C.Gold else C.Muted, 2) })
+		if d then
+			viewport(slot, d.Id, d.Shiny, UDim2.new(1, 0, 0.72, 0))
+			label({ Text = elementIcon(Dragons.Get(d.Id).Element) .. " " .. Dragons.Get(d.Id).Name, Font = DISPLAY, TextSize = 13, TextWrapped = true, TextXAlignment = Enum.TextXAlignment.Center, Position = UDim2.fromScale(0, 0.72), Size = UDim2.fromScale(1, 0.28), Parent = slot })
+		else
+			label({ Text = "Pick a dragon\nbelow", TextSize = 14, TextColor3 = C.Muted, TextXAlignment = Enum.TextXAlignment.Center, Size = UDim2.fromScale(1, 1), Parent = slot })
+		end
+		if not busy then
+			slot.Activated:Connect(function()
+				table.remove(nestPicks, side)
+				renderNest()
+			end)
+		end
+	end
+	local middle = new("Frame", { BackgroundTransparency = 1, Position = UDim2.new(0.38, 0, 0, 10), Size = UDim2.new(0.24, 0, 1, -20), Parent = top })
+	label({ Text = "+", Font = DISPLAY, TextSize = 34, TextColor3 = C.Gold, TextXAlignment = Enum.TextXAlignment.Center, Size = UDim2.new(1, 0, 0, 40), Parent = middle })
+	nestUi.Info = label({ Text = "", TextSize = 13, TextWrapped = true, TextXAlignment = Enum.TextXAlignment.Center, Position = UDim2.fromOffset(0, 40), Size = UDim2.new(1, 0, 0, 50), Parent = middle })
+	if busy then
+		local barBack = new("Frame", { BackgroundColor3 = Color3.fromRGB(12, 20, 34), Position = UDim2.new(0, 0, 0, 92), Size = UDim2.new(1, 0, 0, 10), Parent = middle }, { corner(5) })
+		nestUi.Bar = new("Frame", { BackgroundColor3 = C.Gem, Size = UDim2.fromScale(0, 1), Parent = barBack }, { corner(5) })
+		local skip = button({ Text = "Hatch now · 💎 " .. require(Shared.Config.Combos).SkipGems, Position = UDim2.new(0, -10, 1, -32), Size = UDim2.new(1, 20, 0, 30), TextSize = 13 }, C.Gem, function()
+			local ok, msg = Remotes.Func("SkipNest"):InvokeServer()
+			if not ok then
+				UI.Toast(msg or "Not enough gems", "error")
+			end
+		end)
+		skip.Parent = middle
+	else
+		local a = nestPicks[1] and data.Dragons[nestPicks[1]]
+		local b = nestPicks[2] and data.Dragons[nestPicks[2]]
+		local ready = a and b and Dragons.Get(a.Id).Element ~= Dragons.Get(b.Id).Element
+		if a and b then
+			local combo = require(Shared.Config.Combos).Find(Dragons.Get(a.Id).Element, Dragons.Get(b.Id).Element)
+			if not ready then
+				nestUi.Info.Text = "Pick two different elements"
+			elseif combo and data.Discovered[combo.Id] then
+				nestUi.Info.Text = "→ " .. combo.Name .. (if combo.Weather then "\nneeds " .. combo.Weather else "")
+			elseif combo then
+				nestUi.Info.Text = "→ ??? a secret dragon!" .. (if combo.Weather then "\nonly in some weather..." else "")
+			else
+				nestUi.Info.Text = "No secret here: you get a copy of the weaker one"
+			end
+		else
+			nestUi.Info.Text = "Mix two elements"
+		end
+		local start = button({ Text = "Breed · " .. Format.Time(require(Shared.Config.Combos).NestSeconds), Position = UDim2.new(0, -10, 1, -32), Size = UDim2.new(1, 20, 0, 30), TextSize = 14 }, if ready then C.Orange else C.Panel, function()
+			if not ready then
+				return
+			end
+			local ok, msg = Remotes.Func("StartNest"):InvokeServer(nestPicks[1], nestPicks[2])
+			if ok then
+				nestPicks = {}
+				UI.Toast("🪺 The egg is warming up...", "success")
+			else
+				UI.Toast(msg or "Could not start", "error")
+			end
+		end)
+		start.Parent = middle
+	end
+
+	-- I tuoi draghi, leggeri (senza 3D) per scegliere in fretta.
+	label({ Text = "Your dragons", Font = DISPLAY, TextSize = 18, Size = UDim2.new(1, 0, 0, 26), LayoutOrder = o(), Parent = p.Body })
+	local grid = new("Frame", { BackgroundTransparency = 1, Size = UDim2.new(1, -6, 0, 0), AutomaticSize = Enum.AutomaticSize.Y, LayoutOrder = o(), Parent = p.Body }, {
+		new("UIGridLayout", { CellSize = UDim2.fromOffset(150, 46), CellPadding = UDim2.fromOffset(6, 6), SortOrder = Enum.SortOrder.LayoutOrder }),
+	})
+	local list = {}
+	for uid, d in data.Dragons do
+		table.insert(list, { Uid = uid, D = d })
+	end
+	table.sort(list, function(x, y)
+		return x.D.Power > y.D.Power
+	end)
+	for i, item in list do
+		local def = Dragons.Get(item.D.Id)
+		local picked = table.find(nestPicks, item.Uid) ~= nil
+		local b = button({ Text = elementIcon(def.Element) .. (if def.Element2 then elementIcon(def.Element2) else "") .. " " .. def.Name .. "\n⚔ " .. Format.Number(item.D.Power), TextSize = 12, TextWrapped = true, LayoutOrder = i }, if picked then C.Gold:Lerp(C.Panel, 0.4) else C.Panel2, function()
+			if busy then
+				UI.Toast("The nest is busy", "error")
+				return
+			end
+			local index = table.find(nestPicks, item.Uid)
+			if index then
+				table.remove(nestPicks, index)
+			elseif #nestPicks < 2 then
+				table.insert(nestPicks, item.Uid)
+			else
+				nestPicks[2] = item.Uid
+			end
+			renderNest()
+		end)
+		b.Parent = grid
+	end
+
+	-- Ricette: quelle scoperte si vedono, le altre sono segrete.
+	local Combos = require(Shared.Config.Combos)
+	local found = 0
+	for _, c in Combos.List do
+		if data.Discovered[c[3]] then
+			found += 1
+		end
+	end
+	label({ Text = "Recipes discovered: " .. found .. "/" .. #Combos.List, Font = DISPLAY, TextSize = 18, Size = UDim2.new(1, 0, 0, 26), LayoutOrder = o(), Parent = p.Body })
+	for _, c in Combos.List do
+		local known = data.Discovered[c[3]]
+		local weatherIcon = if c[6] then " · " .. (require(Shared.Config.Weather).Types[c[6]].Icon) .. " only" else ""
+		local text = if known then elementIcon(c[1]) .. " + " .. elementIcon(c[2]) .. "  =  " .. c[4] .. weatherIcon else "❓ + ❓  =  ??? " .. Dragons.Rarities[c[5]].Name .. weatherIcon
+		label({ Text = text, TextSize = 14, TextColor3 = if known then C.Ink else C.Muted, Size = UDim2.new(1, 0, 0, 20), LayoutOrder = o(), Parent = p.Body })
+	end
+end
+
+local function buildNestPanel()
+	local p = makePanel("Nest", "🪺 Breeding Nest")
+	p.Sub.Text = "Two different elements make a new dragon. The parents are not lost. Some recipes need special weather."
+	new("UIListLayout", { Padding = UDim.new(0, 8), SortOrder = Enum.SortOrder.LayoutOrder, Parent = p.Body })
+	refreshers.Nest = renderNest
+end
+
+local function tickNest()
+	local data = State.Data
+	if openPanel ~= "Nest" or not data or not data.Nest or not nestUi.Bar or not nestUi.Bar.Parent then
+		return
+	end
+	local Combos = require(Shared.Config.Combos)
+	local left = math.max(0, data.Nest.Ends - Workspace:GetServerTimeNow())
+	nestUi.Bar.Size = UDim2.fromScale(1 - left / Combos.NestSeconds, 1)
+	nestUi.Info.Text = "Hatching in " .. Format.Time(left)
+end
+
+---------------------------------------------------------------- Codici
+local function buildCodesPanel()
+	local p = makePanel("Codes", "🎟️ Codes")
+	p.Sub.Text = "New codes come with every update. Follow the game for them!"
+	new("UIListLayout", { Padding = UDim.new(0, 10), SortOrder = Enum.SortOrder.LayoutOrder, Parent = p.Body })
+	local box = new("TextBox", {
+		PlaceholderText = "Enter a code",
+		Text = "",
+		ClearTextOnFocus = false,
+		Font = DISPLAY,
+		TextSize = 22,
+		TextColor3 = C.Ink,
+		PlaceholderColor3 = C.Muted,
+		BackgroundColor3 = C.Panel2,
+		Size = UDim2.new(1, -6, 0, 50),
+		LayoutOrder = 1,
+		Parent = p.Body,
+	}, { corner(12), stroke(C.Gold, 2) })
+	local redeem = button({ Text = "Redeem", Size = UDim2.new(1, -6, 0, 46), LayoutOrder = 2, TextSize = 20 }, C.Robux, function()
+		local ok, msg = Remotes.Func("RedeemCode"):InvokeServer(box.Text)
+		UI.Toast(msg or "", if ok then "success" else "error")
+		if ok then
+			box.Text = ""
+		end
+	end)
+	redeem.Parent = p.Body
+end
+
+---------------------------------------------------------------- Premio giornaliero
+local dailyView = nil
+
+local function rewardText(r)
+	local parts = {}
+	if r.Coins then
+		table.insert(parts, "🪙 Coins")
+	end
+	if r.Gems then
+		table.insert(parts, "💎 " .. r.Gems)
+	end
+	if r.Potion then
+		table.insert(parts, Potions.List[r.Potion].Icon .. " " .. Potions.List[r.Potion].Name)
+	end
+	if r.Dragon then
+		table.insert(parts, "🐉 " .. Dragons.Get(r.Dragon).Name)
+	end
+	return table.concat(parts, "\n")
+end
+
+local function renderDaily()
+	local p = panels.Daily
+	if not p.Frame.Visible or not dailyView then
+		return
+	end
+	clearBody(p.Body)
+	local Daily = require(Shared.Config.Daily)
+	for day, reward in Daily.Rewards do
+		local claimed = day <= dailyView.Streak and not (dailyView.CanClaim and day == dailyView.Next)
+		local isNext = dailyView.CanClaim and day == dailyView.Next
+		local cell = new("Frame", { BackgroundColor3 = if day == 7 then Color3.fromRGB(70, 45, 95) else C.Panel2, LayoutOrder = day, Parent = p.Body }, { corner(14), stroke(if isNext then C.Gold elseif claimed then C.Robux else C.Panel, if isNext then 3 else 2) })
+		label({ Text = "Day " .. day, Font = DISPLAY, TextSize = 18, TextXAlignment = Enum.TextXAlignment.Center, Position = UDim2.fromOffset(0, 6), Size = UDim2.new(1, 0, 0, 24), Parent = cell })
+		label({ Text = rewardText(reward), TextSize = 13, TextWrapped = true, TextXAlignment = Enum.TextXAlignment.Center, TextYAlignment = Enum.TextYAlignment.Top, Position = UDim2.fromOffset(6, 34), Size = UDim2.new(1, -12, 1, -40), Parent = cell })
+		if claimed then
+			label({ Text = "✓", Font = DISPLAY, TextSize = 26, TextColor3 = C.Robux, AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -8, 0, 4), Size = UDim2.fromOffset(24, 24), Parent = cell })
+		end
+	end
+	local claim = button({ Text = if dailyView.CanClaim then "Claim Day " .. dailyView.Next else "Next reward in " .. Format.Time(dailyView.ResetIn), Size = UDim2.fromOffset(220, 44), LayoutOrder = 99, TextSize = 18 }, if dailyView.CanClaim then C.Robux else C.Panel, function()
+		if not dailyView.CanClaim then
+			return
+		end
+		local result = Remotes.Func("ClaimDaily"):InvokeServer()
+		if result.Ok then
+			dailyView = result.View
+			UI.Toast("📅 Day " .. result.Day .. ": " .. result.Text, "success")
+			Sfx.Play("Reveal")
+			if result.Hatch then
+				UI.ShowHatch(result.Hatch, nil)
+			end
+			renderDaily()
+		else
+			UI.Toast(result.Error or "Come back tomorrow", "error")
+		end
+	end)
+	claim.Parent = p.Body
+end
+
+local function buildDailyPanel()
+	local p = makePanel("Daily", "📅 Daily Reward")
+	p.Sub.Text = "Come back every day. Miss a day and the streak starts again. Day 7: an exclusive dragon!"
+	new("UIGridLayout", { CellSize = UDim2.fromOffset(150, 130), CellPadding = UDim2.fromOffset(8, 8), SortOrder = Enum.SortOrder.LayoutOrder, HorizontalAlignment = Enum.HorizontalAlignment.Center, Parent = p.Body })
+	refreshers.Daily = function()
+		task.spawn(function()
+			local ok, view = pcall(function()
+				return Remotes.Func("GetDaily"):InvokeServer()
+			end)
+			if ok and view then
+				dailyView = view
+				renderDaily()
+			end
+		end)
+	end
+end
+
+---------------------------------------------------------------- Annunci ed eventi
+function UI.Announce(text)
+	local banner = label({
+		Text = text,
+		Font = DISPLAY,
+		TextSize = 24,
+		TextWrapped = true,
+		TextXAlignment = Enum.TextXAlignment.Center,
+		BackgroundTransparency = 0.05,
+		BackgroundColor3 = Color3.fromRGB(120, 70, 10),
+		AnchorPoint = Vector2.new(0.5, 0),
+		Position = UDim2.new(0.5, 0, 0, -80),
+		Size = UDim2.fromOffset(620, 70),
+		ZIndex = 40,
+		Parent = gui,
+	})
+	corner(16).Parent = banner
+	stroke(C.Gold, 3).Parent = banner
+	Sfx.Play("Rare")
+	TweenService:Create(banner, TweenInfo.new(0.4, Enum.EasingStyle.Back), { Position = UDim2.new(0.5, 0, 0, 110) }):Play()
+	task.delay(6, function()
+		TweenService:Create(banner, TweenInfo.new(0.3), { Position = UDim2.new(0.5, 0, 0, -80) }):Play()
+		task.wait(0.35)
+		banner:Destroy()
+	end)
+end
+
+local eventHolder
+local function renderEvents()
+	if not eventHolder then
+		return
+	end
+	for _, c in eventHolder:GetChildren() do
+		if c:IsA("TextLabel") then
+			c:Destroy()
+		end
+	end
+	local now = Workspace:GetServerTimeNow()
+	local function row(text, color, order)
+		local l = label({ Text = text, Font = DISPLAY, TextSize = 15, AutomaticSize = Enum.AutomaticSize.X, Size = UDim2.fromOffset(0, 28), BackgroundTransparency = 0.15, BackgroundColor3 = color, TextXAlignment = Enum.TextXAlignment.Center, LayoutOrder = order, Parent = eventHolder })
+		corner(14).Parent = l
+		new("UIPadding", { PaddingLeft = UDim.new(0, 10), PaddingRight = UDim.new(0, 10), Parent = l })
+	end
+	local weatherKey = Workspace:GetAttribute("Weather")
+	local Weather = require(Shared.Config.Weather)
+	local w = weatherKey and Weather.Types[weatherKey]
+	if w then
+		local ends = Workspace:GetAttribute("WeatherEnds") or 0
+		row(w.Icon .. " " .. w.Name .. " · " .. Elements.List[w.Element].Icon .. " +25%" .. (if ends > 0 then " · " .. Format.Time(ends - now) else ""), C.Panel, 0)
+	end
+	local ok, list = pcall(function()
+		return game:GetService("HttpService"):JSONDecode(Workspace:GetAttribute("Events") or "[]")
+	end)
+	if ok then
+		for i, e in list do
+			row(e.Icon .. " " .. e.Name .. (if e.Ends then " · " .. Format.Time(e.Ends - now) else ""), if e.Admin then Color3.fromRGB(200, 50, 90) else Color3.fromRGB(150, 70, 200), i)
+		end
+	end
+	local nextAbuse = Workspace:GetAttribute("NextAdminAbuse")
+	if nextAbuse and nextAbuse > now and nextAbuse - now < 86400 then
+		row("👑 Admin Abuse in " .. Format.Time(nextAbuse - now), Color3.fromRGB(120, 40, 60), 99)
+	end
+end
+
 ---------------------------------------------------------------- HUD
 local function refreshHud(data)
 	coinsLabel.Text = Format.Number(data.Coins)
@@ -1057,7 +1381,7 @@ local function buildHud()
 		player:GetAttributeChangedSignal(attr):Connect(refreshStatus)
 	end
 
-	local side = new("Frame", { BackgroundTransparency = 1, AnchorPoint = Vector2.new(0, 0.5), Position = UDim2.new(0, 14, 0.58, 0), Size = UDim2.fromOffset(170, 230), Parent = hud }, {
+	local side = new("Frame", { BackgroundTransparency = 1, AnchorPoint = Vector2.new(0, 0.5), Position = UDim2.new(0, 14, 0.6, 0), Size = UDim2.fromOffset(170, 400), Parent = hud }, {
 		new("UIGridLayout", { CellSize = UDim2.fromOffset(78, 70), CellPadding = UDim2.fromOffset(10, 10), SortOrder = Enum.SortOrder.LayoutOrder }),
 	})
 	local function sideButton(text, color, order, panel)
@@ -1072,7 +1396,14 @@ local function buildHud()
 	local gifts = sideButton("🎁\nGifts", Color3.fromRGB(230, 80, 140), 3, "Gifts")
 	sideButton("🧪\nPotions", Color3.fromRGB(150, 90, 230), 4, "Potions")
 	sideButton("🏪\nMarket", Color3.fromRGB(240, 150, 50), 5, "Market")
-	sideButton("♻️\nRebirth", C.Blue, 6, "Rebirth")
+	sideButton("🪺\nNest", Color3.fromRGB(170, 110, 220), 6, "Nest")
+	sideButton("📅\nDaily", Color3.fromRGB(60, 170, 150), 7, "Daily")
+	sideButton("🎟️\nCodes", Color3.fromRGB(90, 110, 160), 8, "Codes")
+	sideButton("♻️\nRebirth", C.Blue, 9, "Rebirth")
+
+	eventHolder = new("Frame", { BackgroundTransparency = 1, AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -14, 0, 70), Size = UDim2.fromOffset(360, 200), Parent = hud }, {
+		new("UIListLayout", { Padding = UDim.new(0, 5), SortOrder = Enum.SortOrder.LayoutOrder, HorizontalAlignment = Enum.HorizontalAlignment.Right }),
+	})
 	giftButtonLabel = gifts
 	giftDot = new("Frame", { BackgroundColor3 = C.Red, AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, 4, 0, -4), Size = UDim2.fromOffset(16, 16), Visible = false, Parent = gifts }, { corner(999), stroke(Color3.new(1, 1, 1), 2) })
 
@@ -1098,6 +1429,19 @@ function UI.Start()
 	buildMarketPanel()
 	buildPotionsPanel()
 	buildGiftsPanel()
+	buildNestPanel()
+	buildCodesPanel()
+	buildDailyPanel()
+
+	-- Se il premio giornaliero è pronto, si apre da solo poco dopo l'ingresso.
+	task.delay(5, function()
+		local ok, view = pcall(function()
+			return Remotes.Func("GetDaily"):InvokeServer()
+		end)
+		if ok and view and view.CanClaim and not openPanel then
+			UI.Open("Daily")
+		end
+	end)
 
 	State.Changed:Connect(function(data, full)
 		refreshHud(data)
@@ -1111,6 +1455,8 @@ function UI.Start()
 			refreshPotions()
 		elseif openPanel == "Market" then
 			renderMarket()
+		elseif openPanel == "Nest" and full then
+			renderNest()
 		end
 	end)
 
@@ -1128,6 +1474,8 @@ function UI.Start()
 			if openPanel == "Gifts" then
 				renderGifts()
 			end
+			renderEvents()
+			tickNest()
 			local window = Market.Window(Workspace:GetServerTimeNow())
 			if window ~= lastWindow then
 				lastWindow = window

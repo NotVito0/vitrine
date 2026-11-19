@@ -33,17 +33,29 @@ end
 
 local function onKilled(m, damagers)
 	local island = Islands.Get(m.Island)
+	if m.Special == "boss" then
+		Remotes.Event("Notify"):FireAllClients("👹 The giant boss on " .. island.Name .. " was defeated!", "success")
+	end
 	for player in damagers do
 		local data = DataService.Get(player)
 		if data and player.Parent then
-			local coins = math.floor(m.Coins * Boosts.Coins(player, data))
+			local coins = math.floor(m.Coins * Boosts.Coins(player, data) * MonsterService.GoldMult)
 			data.Coins += coins
 			data.Stats.CoinsEarned += coins
 			data.Stats.MonstersDefeated += 1
-			local gems = 0
+			local gems = m.Gems or 0
 			if rng:NextNumber() < Balance.GemChance then
-				gems = rng:NextInteger(1, 2 + math.floor(m.Island / 2))
-				data.Gems += gems
+				gems += rng:NextInteger(1, 2 + math.floor(m.Island / 2))
+			end
+			data.Gems += gems
+			-- Durante gli eventi delle feste, raramente un mostro lascia il drago dell'evento.
+			local drop = Boosts.EventDrop
+			if drop and rng:NextNumber() < drop.Chance * (if m.Special == "boss" then 50 else 1) then
+				local uid = DragonService.Add(player, drop.Dragon, { Force = true })
+				if uid then
+					Remotes.Event("HatchFx"):FireClient(player, { { Id = drop.Dragon, Shiny = false, New = true } }, m.Island)
+					Remotes.Event("Notify"):FireAllClients("🎉 " .. player.DisplayName .. " found the " .. Dragons.Get(drop.Dragon).Name .. "!", "info")
+				end
 			end
 			local leveled = false
 			local xp = Balance.KillXp * island.TrainingXp
@@ -116,8 +128,14 @@ local function tick(player, now)
 		end
 		if now >= (st.Next[entry.Uid] or 0) then
 			local def = Dragons.Get(entry.Dragon.Id)
+			-- Gli ibridi usano il migliore dei loro due elementi.
 			local mult = Elements.Multiplier(def.Element, target.Def.Element)
-			local damage = DragonService.Power(entry.Dragon) * mult * damageMult
+			if def.Element2 then
+				mult = math.max(mult, Elements.Multiplier(def.Element2, target.Def.Element))
+			end
+			local weather = Boosts.WeatherElement
+			local weatherMult = if weather and (def.Element == weather or def.Element2 == weather) then Boosts.WeatherBoost else 1
+			local damage = DragonService.Power(entry.Dragon) * mult * damageMult * weatherMult
 			st.Next[entry.Uid] = now + Balance.AttackInterval * rng:NextNumber(0.85, 1.15)
 			Remotes.Event("AttackFx"):FireAllClients(player.UserId, slot, target.Model, def.Element, mult, damage)
 			MonsterService.Damage(target, player, damage)

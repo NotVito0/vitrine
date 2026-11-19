@@ -17,7 +17,11 @@ local function applySpeed(player)
 	local character = player.Character
 	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
 	if humanoid then
-		humanoid.WalkSpeed = if PassService.Has(player, "Speed") then 32 else 20
+		local speed = if PassService.Has(player, "Speed") then 32 else 20
+		if workspace:GetAttribute("SpeedBoost") then
+			speed += 24 -- "Speed Rush" dell'admin abuse
+		end
+		humanoid.WalkSpeed = speed
 	end
 end
 
@@ -80,6 +84,11 @@ function IslandService.Start()
 		hook(p)
 	end
 	PassService.Changed:Connect(applySpeed)
+	workspace:GetAttributeChangedSignal("SpeedBoost"):Connect(function()
+		for _, p in Players:GetPlayers() do
+			applySpeed(p)
+		end
+	end)
 end
 
 return IslandService

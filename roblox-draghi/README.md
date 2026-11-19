@@ -21,6 +21,21 @@ da solo in italiano, spagnolo, portoghese e altre lingue. I commenti nel codice 
 - **Regali a tempo**: 12 regali in un'ora di gioco (monete, cristalli, pozioni, uova gratis). Si possono
   aprire tutti subito per 49 R$.
 - **Inventario pozioni**: le pozioni si usano quando vuoi; usarne un'altra uguale aggiunge tempo.
+- **Nido degli incroci** su ogni isola: due draghi di elementi diversi danno uno dei 20 ibridi segreti.
+  Alcuni nascono solo con un certo meteo (l'Eclipse Dragon solo durante l'eclissi). Il primo al mondo a
+  scoprire un ibrido viene annunciato in tutti i server.
+- **Meteo** che cambia ogni 15 minuti (sole, vento, pioggia, temporale, neve, eclissi rara), uguale in tutti
+  i server: rafforza un elemento del 25% e cambia cielo, luce, pioggia, neve e lampi.
+- **Codici** (`Config/Codes.lua`) e **premio giornaliero** di 7 giorni, con un drago esclusivo al 7°.
+- **Eventi automatici** (`Config/Events.lua`): pioggia di meteore ogni ora, ora d'oro ogni giorno, weekend
+  con monete x2, e le feste dell'anno (San Valentino, Pasqua, estate, scuola, Halloween, Black Friday,
+  Natale) con moltiplicatori, mostri colorati a tema e un drago esclusivo che i mostri lasciano di rado.
+- **Admin abuse ogni sabato** alle 17:00 UTC (18 italiane d'inverno, 19 d'estate): avvisi 60, 30, 10, 5 e
+  1 minuto prima, poi 7 eventi da 5 minuti pescati tra 15 tipi (fortuna x10, boss giganti, pioggia di uova,
+  gravità bassa, draghi giganti, mostri d'oro, eclissi forzata...), mai gli stessi della settimana prima,
+  con un tema diverso ogni sabato. Il finale regala a tutti il drago admin della settimana.
+- **Comandi admin in chat** (solo per te): `/event abuse` lancia un admin abuse in tutti i server,
+  `/event luck10` (o un altro evento) ne lancia uno solo, `/event stop` li ferma.
 - **Effetti**: schiusa animata (l'uovo trema, lampo, bagliore della rarità), numeri dei danni, mostri che
   lampeggiano quando vengono colpiti, monete che volano verso di te, pannelli e pulsanti animati, suoni.
 - **Negozio**:

@@ -31,20 +31,22 @@ local function rebuild(player)
 		entry = { Key = "", Dragons = {} }
 		rigs[player] = entry
 	end
-	local key = player:GetAttribute("Team") or "[]"
+	local giant = workspace:GetAttribute("GiantDragons") == true
+	local key = (player:GetAttribute("Team") or "[]") .. (if giant then "G" else "")
 	if key == entry.Key then
 		return
 	end
 	entry.Key = key
 	clear(entry)
-	local ok, team = pcall(HttpService.JSONDecode, HttpService, key)
+	local ok, team = pcall(HttpService.JSONDecode, HttpService, player:GetAttribute("Team") or "[]")
 	if not ok then
 		return
 	end
+	entry.Scale = if giant then 2.2 else 1
 	local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
 	local start = if root then root.CFrame else CFrame.new()
 	for i, item in team do
-		local rig = DragonModel.Build(item[1], item[2] == 1, 0.9)
+		local rig = DragonModel.Build(item[1], item[2] == 1, 0.9 * entry.Scale)
 		rig.Model.Parent = folder
 		table.insert(entry.Dragons, { Rig = rig, CFrame = start * CFrame.new(0, 4, 6), Phase = i * 1.7 })
 	end
@@ -57,10 +59,10 @@ local function track(player)
 	rebuild(player)
 end
 
-local function slotOffset(i, n, t, phase)
-	local spread = (i - (n + 1) / 2) * 4.2
-	local back = 5.5 + (i % 2) * 2
-	return CFrame.new(spread, 4.5 + math.sin(t * 2 + phase) * 0.6, back)
+local function slotOffset(i, n, t, phase, scale)
+	local spread = (i - (n + 1) / 2) * 4.2 * scale
+	local back = (5.5 + (i % 2) * 2) * scale
+	return CFrame.new(spread, 4.5 * scale + math.sin(t * 2 + phase) * 0.6, back)
 end
 
 local function render(dt)
@@ -74,7 +76,7 @@ local function render(dt)
 			local base = CFrame.new(root.Position) * (root.CFrame - root.CFrame.Position)
 			local n = #entry.Dragons
 			for i, d in entry.Dragons do
-				local target = base * slotOffset(i, n, t, d.Phase)
+				local target = base * slotOffset(i, n, t, d.Phase, entry.Scale or 1)
 				if d.Lunge and t < d.Lunge.Until then
 					local toward = d.Lunge.Target
 					local from = target.Position
@@ -223,6 +225,11 @@ function DragonVisuals.Start()
 	end)
 
 	RunService.RenderStepped:Connect(render)
+	workspace:GetAttributeChangedSignal("GiantDragons"):Connect(function()
+		for p in rigs do
+			rebuild(p)
+		end
+	end)
 	Remotes.Event("AttackFx").OnClientEvent:Connect(onAttack)
 end
 

@@ -118,6 +118,8 @@ local function onPrompt(prompt)
 	local gateIsland = prompt:GetAttribute("GateIsland")
 	if prompt:GetAttribute("OpenMarket") then
 		UI.Open("Market")
+	elseif prompt:GetAttribute("OpenNest") then
+		UI.Open("Nest")
 	elseif eggIsland then
 		if hatching then
 			return
@@ -155,6 +157,16 @@ function World.Start(ui)
 	end
 
 	ProximityPromptService.PromptTriggered:Connect(onPrompt)
+
+	-- Draghi arrivati da nido, regali, eventi e admin abuse: stessa animazione della schiusa.
+	Remotes.Event("HatchFx").OnClientEvent:Connect(function(results, island)
+		if results and #results > 0 then
+			UI.ShowHatch(results, island)
+		end
+	end)
+	Remotes.Event("Announce").OnClientEvent:Connect(function(text)
+		UI.Announce(text)
+	end)
 
 	Remotes.Event("Reward").OnClientEvent:Connect(function(reward)
 		flyCoins(reward.Position, if reward.Gems > 0 then 7 else 5, reward.Gems > 0)

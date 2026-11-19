@@ -3,6 +3,16 @@
 -- così la gente se ne parla: "ora c'è la Super Luck al mercato!".
 local Market = {}
 
+-- Mescola un numero in un seme ben distribuito (finestre di tempo vicine danno risultati molto diversi).
+local function seed(n: number): number
+	n = math.floor(n) % 4294967296
+	n = bit32.bxor(n, bit32.rshift(n, 16))
+	n = (n * 73244475) % 4294967296
+	n = bit32.bxor(n, bit32.rshift(n, 16))
+	n = (n * 73244475) % 4294967296
+	return bit32.bxor(n, bit32.rshift(n, 16))
+end
+
 Market.RestockSeconds = 300
 Market.Slots = 4
 
@@ -23,7 +33,7 @@ end
 
 -- La merce di una finestra di tempo. Stesso risultato su server e client.
 function Market.Items(window: number)
-	local rng = Random.new(window * 7919 + 17)
+	local rng = Random.new(seed(window * 7919 + 17))
 	local pool = table.clone(Market.Pool)
 	local items = {}
 	for _ = 1, math.min(Market.Slots, #pool) do

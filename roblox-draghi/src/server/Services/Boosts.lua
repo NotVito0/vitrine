@@ -6,7 +6,12 @@ local PassService = require(script.Parent.PassService)
 local Boosts = {}
 
 -- Moltiplicatori globali per gli eventi (weekend x2, admin abuse...). Li cambia il sistema eventi.
-Boosts.Global = { Coins = 1, Damage = 1, Training = 1, Luck = 1 }
+Boosts.Global = { Coins = 1, Damage = 1, Training = 1, Luck = 1, Shiny = 1 }
+
+-- Impostati da WeatherService ed EventService.
+Boosts.WeatherElement = nil -- elemento rafforzato dal meteo attuale
+Boosts.WeatherBoost = 1.25
+Boosts.EventDrop = nil -- { Dragon, Chance } durante un evento stagionale
 
 function Boosts.Add(data, name: string, seconds: number, mult: number)
 	local now = os.time()

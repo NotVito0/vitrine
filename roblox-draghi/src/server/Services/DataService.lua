@@ -39,6 +39,9 @@ local function template()
 		Boosts = {}, -- nome -> { Expires, Mult }
 		Potions = {}, -- nome pozione -> quantità nell'inventario
 		Market = { Window = 0, Bought = {} }, -- acquisti nel mercato nella finestra attuale
+		Codes = {}, -- codici già usati
+		Daily = { Day = 0, Last = -1 }, -- giorno della serie e ultimo giorno (UTC) ritirato
+		-- Nest = { A, B, Ends } mentre un incrocio è in corso
 		BonusTeamSlots = 0,
 		Settings = { AutoEquip = true },
 		Stats = { MonstersDefeated = 0, EggsHatched = 0, CoinsEarned = 0 },

@@ -50,6 +50,7 @@ local function snapshot(player, data, full)
 		Passes = PassService.Snapshot(player),
 		OneTime = data.OneTime,
 		Potions = data.Potions,
+		Nest = data.Nest,
 		TeamSize = DragonService.TeamSize(player),
 		HatchCount = PassService.Value(player, "HatchCount", 1),
 		Mults = {
@@ -70,6 +71,7 @@ local function snapshot(player, data, full)
 				Shiny = d.Shiny,
 				Serial = d.Serial,
 				Power = DragonService.Power(d),
+				Base = d.Base,
 			}
 		end
 		out.Dragons = dragons

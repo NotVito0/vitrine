@@ -95,7 +95,7 @@ function EggService.Grant(player, islandIndex: number, amount: number)
 	end
 	local luck = Boosts.Luck(player, data)
 	local weights = EggService.Weights(island, luck)
-	local shinyChance = Balance.ShinyChance * (if luck > 1 then 1.5 else 1) * Boosts.Active(data, "Shiny")
+	local shinyChance = Balance.ShinyChance * (if luck > 1 then 1.5 else 1) * Boosts.Active(data, "Shiny") * Boosts.Global.Shiny
 	for _ = 1, amount do
 		local id = roll(weights)
 		local shiny = rng:NextNumber() < shinyChance

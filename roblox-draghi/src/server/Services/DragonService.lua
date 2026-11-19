@@ -15,7 +15,8 @@ function DragonService.Power(dragon): number
 		return 0
 	end
 	local shiny = if dragon.Shiny then Balance.ShinyMult else 1
-	return def.Power * shiny * Balance.LevelMult(dragon.Level or 1)
+	-- Gli ibridi del nido hanno una forza base propria (dai genitori), salvata in Base.
+	return (dragon.Base or def.Power) * shiny * Balance.LevelMult(dragon.Level or 1)
 end
 
 function DragonService.TeamSize(player): number
@@ -85,7 +86,7 @@ function DragonService.Add(player, dragonId: string, opts)
 	end
 	local uid = tostring(data.NextUid)
 	data.NextUid += 1
-	local dragon = { Id = dragonId, Level = 1, Xp = 0, Shiny = opts.Shiny == true, Serial = opts.Serial }
+	local dragon = { Id = dragonId, Level = 1, Xp = 0, Shiny = opts.Shiny == true, Serial = opts.Serial, Base = opts.Base }
 	data.Dragons[uid] = dragon
 	local isNew = not data.Discovered[dragonId]
 	data.Discovered[dragonId] = true

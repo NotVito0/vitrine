@@ -247,6 +247,25 @@ local function buildMarket(folder, pos)
 	prompt(counter, "Shop", "Potion Market", Enum.KeyCode.E, { OpenMarket = true })
 end
 
+-- Nido degli incroci: un grande nido di rami con un uovo luminoso.
+local function buildNest(folder, pos)
+	local nest = Instance.new("Model")
+	nest.Name = "Nest"
+	nest.Parent = folder
+	local base = part({ Parent = nest, Name = "NestBase", Shape = Enum.PartType.Cylinder, Size = Vector3.new(1.4, 12, 12), CFrame = CFrame.new(pos + Vector3.new(0, 0.7, 0)) * CFrame.Angles(0, 0, math.rad(90)), Color = Color3.fromRGB(110, 74, 44), Material = Enum.Material.Wood })
+	for i = 0, 13 do
+		local a = i / 14 * math.pi * 2
+		part({ Parent = nest, Size = Vector3.new(0.7, 0.7, 5), CFrame = CFrame.new(pos + Vector3.new(math.cos(a) * 5.4, 1.6, math.sin(a) * 5.4)) * CFrame.Angles(0, -a, math.rad(18 * ((i % 2) * 2 - 1))), Color = Color3.fromRGB(140, 98, 58), Material = Enum.Material.Wood })
+	end
+	local egg = part({ Parent = nest, Size = Vector3.new(3.4, 4.2, 3.4), Position = pos + Vector3.new(0, 3.6, 0), Color = Color3.fromRGB(230, 200, 255), Material = Enum.Material.Neon, CanCollide = false })
+	egg.Transparency = 0.15
+	local mesh = Instance.new("SpecialMesh")
+	mesh.MeshType = Enum.MeshType.Sphere
+	mesh.Parent = egg
+	billboard(base, "🪺 BREEDING NEST\nMix two elements, discover secret dragons", UDim2.fromOffset(280, 60), Vector3.new(0, 8, 0), Color3.fromRGB(230, 200, 255), 120)
+	prompt(base, "Breed", "Breeding Nest", Enum.KeyCode.E, { OpenNest = true })
+end
+
 local function buildGate(folder, toIndex, x)
 	local island = Islands.Get(toIndex)
 	local gate = part({ Parent = folder, Name = "Gate", Size = Vector3.new(2, 18, 20), Position = Vector3.new(x, 9, 0), Color = Color3.fromRGB(255, 200, 60), Material = Enum.Material.ForceField, Transparency = 0.1 })
@@ -295,9 +314,12 @@ function WorldBuilder.Build()
 		buildTraining(folder, island, index, trainingPos)
 		local marketPos = center + Vector3.new(-34, 0, 34)
 		buildMarket(folder, marketPos)
+		local nestPos = center + Vector3.new(34, 0, 32)
+		buildNest(folder, nestPos)
 
 		local keepAway = {
 			{ Pos = marketPos, R = 14 },
+			{ Pos = nestPos, R = 12 },
 			{ Pos = eggPos, R = 14 },
 			{ Pos = trainingPos, R = WorldBuilder.TrainingRadius + 6 },
 			{ Pos = center + Vector3.new(0, 0, 20), R = 14 }, -- zona di arrivo

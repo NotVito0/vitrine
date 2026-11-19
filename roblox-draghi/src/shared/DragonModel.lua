@@ -33,7 +33,7 @@ function DragonModel.Build(dragonId: string, shiny: boolean?, scale: number?)
 	local el = Elements.List[def.Element] or Elements.List.Nature
 	local s = scale or 1
 	local main = el.Color
-	local accent = el.Color2
+	local accent = if def.Element2 and Elements.List[def.Element2] then Elements.List[def.Element2].Color else el.Color2
 	if shiny then
 		main = main:Lerp(Color3.new(1, 1, 1), 0.35)
 	end
@@ -79,7 +79,7 @@ function DragonModel.Build(dragonId: string, shiny: boolean?, scale: number?)
 		sparkles.Parent = body
 	end
 	local rarity = def.Rarity
-	if rarity == "Legendary" or rarity == "Limited" or rarity == "Exclusive" then
+	if rarity == "Legendary" or rarity == "Limited" or rarity == "Exclusive" or rarity == "Secret" or rarity == "Event" then
 		local light = Instance.new("PointLight")
 		light.Color = el.Color
 		light.Range = 10 * s
