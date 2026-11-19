@@ -11,6 +11,7 @@ local Dragons = require(Shared.Config.Dragons)
 local Remotes = require(Shared.Remotes)
 
 local DataService = require(script.Parent.DataService)
+local Analytics = require(script.Parent.Analytics)
 local DragonService = require(script.Parent.DragonService)
 local WeatherService = require(script.Parent.WeatherService)
 
@@ -111,6 +112,7 @@ function NestService.Start()
 		if Dragons.Get(a.Id).Element == Dragons.Get(b.Id).Element then
 			return false, "Pick two dragons with different elements"
 		end
+		Analytics.Step(player, data, "FirstBreed")
 		data.Nest = { A = uidA, B = uidB, Ends = os.time() + Combos.NestSeconds, Weather = WeatherService.Current() }
 		DataService.MarkDirty(player, true)
 		return true

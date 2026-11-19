@@ -77,8 +77,9 @@ Passes.TierOrder = { "Coins", "Damage", "Training", "Luck", "HatchCount", "TeamS
 Passes.Single = {
 	VIP = { Id = 0, Price = 249, Title = "VIP", Icon = "👑", Description = "+20% coins forever, VIP tag and VIP area" },
 	Speed = { Id = 0, Price = 49, Title = "Fast Walk", Icon = "🏃", Description = "Walk twice as fast" },
+	AutoHatch = { Id = 0, Price = 149, Title = "Auto Hatch", Icon = "🔁", Description = "Keeps opening eggs for you while you stand next to one" },
 }
 
-Passes.SingleOrder = { "VIP", "Speed" }
+Passes.SingleOrder = { "VIP", "AutoHatch", "Speed" }
 
 return Passes

@@ -450,6 +450,16 @@ local function buildShopPanel()
 			end
 		end
 	end
+	if player.MembershipType ~= Enum.MembershipType.Premium then
+		shopSection(p.Body, "Roblox Premium", o())
+		local premium = shopRow(p.Body, o(), "⭐", "Premium bonus", "Roblox Premium members get +10% coins in this game", false)
+		premium.Button.Text = "Get Premium"
+		premium.Button.Activated:Connect(function()
+			pcall(function()
+				game:GetService("MarketplaceService"):PromptPremiumPurchase(player)
+			end)
+		end)
+	end
 	shopSection(p.Body, "Upgrades (forever)", o())
 	for _, category in Passes.TierOrder do
 		local tiers = Passes.Tiers[category]
@@ -667,9 +677,11 @@ function UI.ShowHatch(results, islandIndex)
 end
 
 ---------------------------------------------------------------- Offerte
+local offerShown = false
 function UI.NeedCoins(missing)
 	local data = State.Data
-	if data and not data.OneTime.MiniPack then
+	if data and not data.OneTime.MiniPack and not offerShown then
+		offerShown = true
 		UI.ShowOffer("MiniPack", "You need " .. Format.Number(missing or 0) .. " more coins. The Starter Drake is stronger than anything on the first islands, and you can't get it from eggs.")
 	else
 		UI.Toast("You need " .. Format.Number(missing or 0) .. " more coins", "error")
@@ -1381,7 +1393,7 @@ local function buildHud()
 		player:GetAttributeChangedSignal(attr):Connect(refreshStatus)
 	end
 
-	local side = new("Frame", { BackgroundTransparency = 1, AnchorPoint = Vector2.new(0, 0.5), Position = UDim2.new(0, 14, 0.6, 0), Size = UDim2.fromOffset(170, 400), Parent = hud }, {
+	local side = new("Frame", { BackgroundTransparency = 1, AnchorPoint = Vector2.new(0, 0.5), Position = UDim2.new(0, 14, 0.6, 0), Size = UDim2.fromOffset(254, 240), Parent = hud }, {
 		new("UIGridLayout", { CellSize = UDim2.fromOffset(78, 70), CellPadding = UDim2.fromOffset(10, 10), SortOrder = Enum.SortOrder.LayoutOrder }),
 	})
 	local function sideButton(text, color, order, panel)
@@ -1417,7 +1429,9 @@ function UI.Start()
 	local uiScale = new("UIScale", { Parent = gui })
 	local function rescale()
 		local size = Workspace.CurrentCamera.ViewportSize
-		uiScale.Scale = math.clamp(math.min(size.X / 1100, size.Y / 650), 0.62, 1.15)
+		-- Sul telefono non si scende sotto 0.75: testi leggibili e pulsanti abbastanza grandi da toccare.
+		local touch = game:GetService("UserInputService").TouchEnabled
+		uiScale.Scale = math.clamp(math.min(size.X / 1100, size.Y / 650), if touch then 0.75 else 0.62, 1.15)
 	end
 	Workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(rescale)
 	rescale()

@@ -24,8 +24,16 @@ local noSave = {} -- player -> true se i dati non vanno salvati (Studio senza ac
 local loadedEvent = Instance.new("BindableEvent")
 DataService.PlayerLoaded = loadedEvent.Event
 
+-- Versione dei dati: quando un aggiornamento cambia la forma dei salvataggi,
+-- si alza questo numero e si aggiunge un passo in MIGRATIONS.
+local DATA_VERSION = 1
+local MIGRATIONS = {
+	-- [2] = function(data) ... end,
+}
+
 local function template()
 	return {
+		Version = DATA_VERSION,
 		Coins = 0,
 		Gems = 0,
 		Rebirths = 0,
@@ -175,6 +183,14 @@ local function onJoin(player)
 	end
 	if not player.Parent then
 		return
+	end
+	data.Version = data.Version or 1
+	while data.Version < DATA_VERSION do
+		local step = MIGRATIONS[data.Version + 1]
+		if step then
+			step(data)
+		end
+		data.Version += 1
 	end
 	reconcile(data, template())
 	if next(data.Dragons) == nil then

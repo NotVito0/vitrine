@@ -8,6 +8,7 @@ local Format = require(Shared.Format)
 local Remotes = require(Shared.Remotes)
 
 local DataService = require(script.Parent.DataService)
+local Analytics = require(script.Parent.Analytics)
 local PassService = require(script.Parent.PassService)
 local WorldBuilder = require(script.Parent.WorldBuilder)
 
@@ -44,6 +45,8 @@ function IslandService.Start()
 		end
 		data.Coins -= island.UnlockCost
 		data.Unlocked[island.Id] = true
+		Analytics.Spend(player, "Coins", island.UnlockCost, data.Coins, "Island_" .. island.Id)
+		Analytics.Step(player, data, "SecondIsland")
 		DataService.MarkDirty(player, false)
 		Remotes.Event("Notify"):FireAllClients(player.DisplayName .. " unlocked " .. island.Name .. "!", "info")
 		return true
@@ -61,6 +64,7 @@ function IslandService.Start()
 		data.Coins = 0
 		data.Unlocked = { [Islands.List[1].Id] = true }
 		data.Rebirths += 1
+		Analytics.Step(player, data, "FirstRebirth")
 		DataService.MarkDirty(player, true)
 		local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
 		if root then

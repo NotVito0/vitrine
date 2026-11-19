@@ -8,6 +8,7 @@ local Debris = game:GetService("Debris")
 
 local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
 local Islands = require(Shared.Config.Islands)
+local Dragons = require(Shared.Config.Dragons)
 local Format = require(Shared.Format)
 local Remotes = require(Shared.Remotes)
 
@@ -113,6 +114,45 @@ local function flyCoins(from, count, withGems)
 end
 
 local hatching = false
+local autoHatch = false
+
+-- Apre le uova una volta. In modalità automatica (quiet) mostra la schiusa grande
+-- solo per draghi epici o migliori, o mai visti; gli altri in una notifica.
+local function hatchOnce(eggIsland, amount, quiet)
+	local ok, result = pcall(function()
+		return Remotes.Func("Hatch"):InvokeServer(eggIsland, amount)
+	end)
+	if not ok or type(result) ~= "table" then
+		return false
+	end
+	if result.Ok then
+		local special = false
+		local names = {}
+		for _, r in result.Results do
+			local def = Dragons.Get(r.Id)
+			if r.New or r.Shiny or Dragons.Rarities[def.Rarity].Order >= 4 then
+				special = true
+			end
+			table.insert(names, def.Name .. (if r.Shiny then " ✨" else ""))
+		end
+		if not quiet or special then
+			UI.ShowHatch(result.Results, result.Island)
+		else
+			UI.Toast("🥚 " .. table.concat(names, ", "), "info")
+		end
+		return true
+	elseif result.Error == "coins" then
+		UI.NeedCoins(result.Missing)
+	elseif result.Error == "full" then
+		UI.Toast("Your inventory is full. Delete some dragons or get more Storage.", "error")
+	elseif result.Error == "locked" then
+		UI.Toast("Unlock this island first.", "error")
+	elseif result.Error == "far" then
+		return false
+	end
+	return result.Error == "slow"
+end
+
 local function onPrompt(prompt)
 	local eggIsland = prompt:GetAttribute("EggIsland")
 	local gateIsland = prompt:GetAttribute("GateIsland")
@@ -121,27 +161,43 @@ local function onPrompt(prompt)
 	elseif prompt:GetAttribute("OpenNest") then
 		UI.Open("Nest")
 	elseif eggIsland then
+		local amount = prompt:GetAttribute("Amount")
+		local data = State.Data
+		local ownsAuto = data and data.Passes and data.Passes.Single.AutoHatch
+		if ownsAuto then
+			-- Pass Auto Hatch: un tocco accende, un altro tocco (o allontanarsi) spegne.
+			if autoHatch then
+				autoHatch = false
+				UI.Toast("🔁 Auto Hatch OFF", "info")
+				return
+			end
+			autoHatch = true
+			UI.Toast("🔁 Auto Hatch ON · tap again or walk away to stop", "success")
+			local eggPart = prompt.Parent
+			task.spawn(function()
+				while autoHatch do
+					local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+					if not root or (root.Position - eggPart.Position).Magnitude > 18 then
+						break
+					end
+					if not hatchOnce(eggIsland, amount, true) then
+						break
+					end
+					task.wait(1.2)
+				end
+				if autoHatch then
+					autoHatch = false
+					UI.Toast("🔁 Auto Hatch stopped", "info")
+				end
+			end)
+			return
+		end
 		if hatching then
 			return
 		end
 		hatching = true
-		local amount = prompt:GetAttribute("Amount")
-		local ok, result = pcall(function()
-			return Remotes.Func("Hatch"):InvokeServer(eggIsland, amount)
-		end)
+		hatchOnce(eggIsland, amount, false)
 		hatching = false
-		if not ok or type(result) ~= "table" then
-			return
-		end
-		if result.Ok then
-			UI.ShowHatch(result.Results, result.Island)
-		elseif result.Error == "coins" then
-			UI.NeedCoins(result.Missing)
-		elseif result.Error == "full" then
-			UI.Toast("Your inventory is full. Delete some dragons first.", "error")
-		elseif result.Error == "locked" then
-			UI.Toast("Unlock this island first.", "error")
-		end
 	elseif gateIsland then
 		local ok, message = Remotes.Func("UnlockIsland"):InvokeServer(gateIsland)
 		if ok then

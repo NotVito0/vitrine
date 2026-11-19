@@ -71,6 +71,21 @@ Per provare anche i salvataggi: **Game Settings → Security → Enable Studio A
 3. Copia il numero (ID) di ognuno al posto dello `0` corrispondente nei due file.
 4. Ripubblica.
 
+## Prima di pubblicare: impostazioni da fare a mano (Game Settings / Creator Dashboard)
+
+Dalla lista di controllo per la pubblicazione della skill roblox-game, le voci che non si fanno dal codice:
+
+- [ ] **Questionario sui contenuti** (età consigliata) compilato.
+- [ ] **Icona 512x512** e almeno **3 miniature** (o un video).
+- [ ] **Descrizione** chiara, con le parole che la gente cerca (dragon, simulator, pets...).
+- [ ] **Genere**: Simulator. **Giocatori per server**: 12–16.
+- [ ] **Dispositivi**: telefono, tablet, computer, console.
+- [ ] **Server privati** attivi (gratis o a pochi Robux).
+- [ ] **Gruppo Roblox** del gioco, per le notizie e i premi del gruppo.
+- [ ] Pass e prodotti creati, con gli ID incollati in `Config/Passes.lua` e `Config/Products.lua`.
+- [ ] Prova di un acquisto vero in un server pubblico (in Studio sono simulati).
+- [ ] Prova con almeno 2 giocatori insieme e prova su telefono.
+
 ## Dove si cambiano le cose
 
 | Cosa | File |
@@ -81,6 +96,10 @@ Per provare anche i salvataggi: **Game Settings → Security → Enable Studio A
 | Game pass e prezzi | `src/shared/Config/Passes.lua` |
 | Pacchetti, pozioni, cristalli | `src/shared/Config/Products.lua` |
 | Elementi e debolezze | `src/shared/Config/Elements.lua` |
+| Codici (solo sul server, nessuno li vede prima) | `src/server/Config/Codes.lua` |
+| Eventi, feste e admin abuse | `src/shared/Config/Events.lua` |
+
+Il file del gioco per Roblox Studio si crea con `python3 tools/build_place.py` (finisce in `build/`).
 
 ## Prossime fasi
 

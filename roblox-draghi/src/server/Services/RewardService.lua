@@ -1,6 +1,7 @@
 -- Codici e premio giornaliero.
 local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
-local Codes = require(Shared.Config.Codes)
+-- I codici stanno sul server: se fossero in ReplicatedStorage chiunque potrebbe leggerli prima dell'annuncio.
+local Codes = require(script.Parent.Parent.Config.Codes)
 local Daily = require(Shared.Config.Daily)
 local Islands = require(Shared.Config.Islands)
 local Potions = require(Shared.Config.Potions)

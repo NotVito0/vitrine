@@ -11,6 +11,7 @@ local Islands = require(Shared.Config.Islands)
 local Remotes = require(Shared.Remotes)
 
 local DataService = require(script.Parent.DataService)
+local Analytics = require(script.Parent.Analytics)
 local DragonService = require(script.Parent.DragonService)
 local MonsterService = require(script.Parent.MonsterService)
 local WorldBuilder = require(script.Parent.WorldBuilder)
@@ -43,6 +44,7 @@ local function onKilled(m, damagers)
 			data.Coins += coins
 			data.Stats.CoinsEarned += coins
 			data.Stats.MonstersDefeated += 1
+			Analytics.Step(player, data, "FirstKill")
 			local gems = m.Gems or 0
 			if rng:NextNumber() < Balance.GemChance then
 				gems += rng:NextInteger(1, 2 + math.floor(m.Island / 2))

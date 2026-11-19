@@ -11,6 +11,7 @@ local Products = require(Shared.Config.Products)
 local Remotes = require(Shared.Remotes)
 
 local DataService = require(script.Parent.DataService)
+local Analytics = require(script.Parent.Analytics)
 local DragonService = require(script.Parent.DragonService)
 local Boosts = require(script.Parent.Boosts)
 local MarketService = require(script.Parent.MarketService)
@@ -135,6 +136,7 @@ local function grant(player, data, key)
 	if info.OneTime then
 		data.OneTime[key] = true
 	end
+	Analytics.Custom(player, "Purchase_" .. key, info.Price)
 	DataService.MarkDirty(player, true)
 	Remotes.Event("Notify"):FireClient(player, "Thanks for your purchase: " .. info.Title .. "!", "success")
 end

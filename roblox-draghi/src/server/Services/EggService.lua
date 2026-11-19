@@ -6,6 +6,7 @@ local Islands = require(Shared.Config.Islands)
 local Remotes = require(Shared.Remotes)
 
 local DataService = require(script.Parent.DataService)
+local Analytics = require(script.Parent.Analytics)
 local DragonService = require(script.Parent.DragonService)
 local PassService = require(script.Parent.PassService)
 local WorldBuilder = require(script.Parent.WorldBuilder)
@@ -46,6 +47,9 @@ local function roll(weights)
 end
 
 function EggService.Start()
+	game:GetService("Players").PlayerRemoving:Connect(function(p)
+		lastHatch[p] = nil
+	end)
 	Remotes.Func("Hatch").OnServerInvoke = function(player, islandIndex, amount)
 		local data = DataService.Get(player)
 		local island = type(islandIndex) == "number" and Islands.Get(islandIndex)
@@ -81,6 +85,8 @@ function EggService.Start()
 		amount = math.min(amount, space)
 
 		data.Coins -= island.EggCost * amount
+		Analytics.Spend(player, "Coins", island.EggCost * amount, data.Coins, "Egg_" .. island.Id)
+		Analytics.Step(player, data, "FirstEgg")
 		return { Ok = true, Results = EggService.Grant(player, islandIndex, amount), Island = islandIndex }
 	end
 end

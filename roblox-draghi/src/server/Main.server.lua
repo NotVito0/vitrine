@@ -21,6 +21,11 @@ local EventService = require(Services.EventService)
 
 WorldBuilder.Build()
 
+local Analytics = require(Services.Analytics)
+DataService.PlayerLoaded:Connect(function(player, data)
+	Analytics.Step(player, data, "Joined")
+end)
+
 -- Prima i sistemi che rispondono al client, poi quelli che caricano i giocatori.
 DragonService.Start()
 EggService.Start()

@@ -7,6 +7,7 @@ local Format = require(Shared.Format)
 local Remotes = require(Shared.Remotes)
 
 local DataService = require(script.Parent.DataService)
+local Analytics = require(script.Parent.Analytics)
 local Boosts = require(script.Parent.Boosts)
 
 local MarketService = {}
@@ -90,12 +91,14 @@ function MarketService.Start()
 				return false, "You need " .. (item.Gems - data.Gems) .. " more gems"
 			end
 			data.Gems -= item.Gems
+			Analytics.Spend(player, "Gems", item.Gems, data.Gems, "Market_" .. item.Potion)
 		else
 			local price = bestEggCost(data) * item.EggPrice
 			if data.Coins < price then
 				return false, "You need " .. Format.Number(price - data.Coins) .. " more coins"
 			end
 			data.Coins -= price
+			Analytics.Spend(player, "Coins", price, data.Coins, "Market_" .. item.Potion)
 		end
 		data.Market.Bought[key] = bought + 1
 		MarketService.AddPotion(data, item.Potion, 1)
