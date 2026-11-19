@@ -370,7 +370,6 @@ function WorldBuilder.Build()
 	if existing and existing ~= spawn then
 		existing:Destroy()
 	end
-	workspace.FallenPartsDestroyHeight = -200
 end
 
 -- Su quale isola si trova questa posizione (nil se sul ponte o nel vuoto).

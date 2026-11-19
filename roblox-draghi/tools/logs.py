@@ -38,10 +38,10 @@ def main():
         print("Nessun registro (ancora):", status, body[:200])
         return
     data = json.loads(body)
-    when = datetime.datetime.utcfromtimestamp(data.get("Updated", 0)).strftime("%Y-%m-%d %H:%M UTC")
+    when = datetime.datetime.fromtimestamp(data.get("Updated", 0), datetime.timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
     print("Aggiornato:", when, "| voci:", len(data.get("Entries", [])))
     for e in data.get("Entries", []):
-        last = datetime.datetime.utcfromtimestamp(e["Last"]).strftime("%H:%M")
+        last = datetime.datetime.fromtimestamp(e["Last"], datetime.timezone.utc).strftime("%H:%M")
         print(f"\n[{e['Side']}] x{e['Count']} v{e.get('Version')} ultimo {last}\n  {e['Msg']}")
         if e.get("Trace"):
             print("  " + e["Trace"].replace("\n", "\n  "))
