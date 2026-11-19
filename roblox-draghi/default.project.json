@@ -18,6 +18,11 @@
           "$path": "src/client"
         }
       }
+    },
+    "ReplicatedFirst": {
+      "First": {
+        "$path": "src/first"
+      }
     }
   }
 }

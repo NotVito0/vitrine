@@ -1,54 +1,70 @@
 -- Avvio del server: costruisce il mondo e accende tutti i sistemi.
+-- Ogni sistema parte protetto: se uno va in errore, gli altri continuano e l'errore finisce nel registro.
 local Services = script.Parent:WaitForChild("Services")
 
-local WorldBuilder = require(Services.WorldBuilder)
-local DataService = require(Services.DataService)
-local PassService = require(Services.PassService)
-local DragonService = require(Services.DragonService)
-local SyncService = require(Services.SyncService)
-local MonsterService = require(Services.MonsterService)
-local CombatService = require(Services.CombatService)
-local TrainingService = require(Services.TrainingService)
-local EggService = require(Services.EggService)
-local IslandService = require(Services.IslandService)
-local ShopService = require(Services.ShopService)
-local MarketService = require(Services.MarketService)
-local GiftService = require(Services.GiftService)
-local WeatherService = require(Services.WeatherService)
-local NestService = require(Services.NestService)
-local RewardService = require(Services.RewardService)
-local EventService = require(Services.EventService)
-local QuestService = require(Services.QuestService)
-local AbilityService = require(Services.AbilityService)
-local CosmeticService = require(Services.CosmeticService)
+local Diagnostics = require(Services.Diagnostics)
+Diagnostics.Start()
 
-WorldBuilder.Build()
+local function safe(name, fn)
+	local ok, err = xpcall(fn, debug.traceback)
+	if not ok then
+		Diagnostics.Add("Server", "Start failed: " .. name .. ": " .. tostring(err), "")
+		print("[Avvio] " .. name .. " non è partito:", err)
+	end
+end
 
-local Analytics = require(Services.Analytics)
-DataService.PlayerLoaded:Connect(function(player, data)
-	Analytics.Step(player, data, "Joined")
+local loaded = {}
+local function load(name)
+	safe("require " .. name, function()
+		loaded[name] = require(Services[name])
+	end)
+	return loaded[name]
+end
+
+local WorldBuilder = load("WorldBuilder")
+safe("WorldBuilder.Build", function()
+	WorldBuilder.Build()
 end)
 
--- Prima i sistemi che rispondono al client, poi quelli che caricano i giocatori.
-DragonService.Start()
-EggService.Start()
-MarketService.Start()
-GiftService.Start()
-WeatherService.Start()
-NestService.Start()
-RewardService.Start()
-QuestService.Start()
-AbilityService.Start()
-CosmeticService.Start()
-IslandService.Start()
-ShopService.Start()
-SyncService.Start()
-PassService.Start()
-DataService.Start()
+local DataService = load("DataService")
+local Analytics = load("Analytics")
+safe("Analytics hook", function()
+	DataService.PlayerLoaded:Connect(function(player, data)
+		Analytics.Step(player, data, "Joined")
+	end)
+end)
 
-MonsterService.Start()
-CombatService.Start()
-TrainingService.Start()
-EventService.Start()
+-- Prima i sistemi che rispondono al client, poi quelli che caricano i giocatori, poi i cicli di gioco.
+local ORDER = {
+	"ArtService",
+	"DragonService",
+	"EggService",
+	"MarketService",
+	"GiftService",
+	"WeatherService",
+	"NestService",
+	"RewardService",
+	"QuestService",
+	"AbilityService",
+	"CosmeticService",
+	"IslandService",
+	"ShopService",
+	"SyncService",
+	"PassService",
+	"DataService",
+	"MonsterService",
+	"CombatService",
+	"TrainingService",
+	"EventService",
+}
+
+for _, name in ORDER do
+	local service = loaded[name] or load(name)
+	if service and service.Start then
+		safe(name .. ".Start", function()
+			service.Start()
+		end)
+	end
+end
 
 print("[Dragon Elements Sim] server pronto")

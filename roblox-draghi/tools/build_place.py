@@ -22,6 +22,7 @@ MAPPING = [
     ("ReplicatedStorage", None, "shared", "Shared"),
     ("ServerScriptService", None, "server", "Server"),
     ("StarterPlayer", "StarterPlayerScripts", "client", "Client"),
+    ("ReplicatedFirst", None, "first", "First"),
 ]
 
 counter = 0

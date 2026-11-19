@@ -87,8 +87,10 @@ local function button(props, color, onClick)
 	for k, v in props do
 		b[k] = v
 	end
-	corner(10).Parent = b
-	new("UIStroke", { Color = color:Lerp(Color3.new(0, 0, 0), 0.45), Thickness = 2, ApplyStrokeMode = Enum.ApplyStrokeMode.Border, Parent = b })
+	corner(12).Parent = b
+	new("UIStroke", { Color = color:Lerp(Color3.new(0, 0, 0), 0.5), Thickness = 2.5, ApplyStrokeMode = Enum.ApplyStrokeMode.Border, Parent = b })
+	new("UIGradient", { Rotation = 90, Color = ColorSequence.new(Color3.new(1, 1, 1), Color3.fromRGB(190, 190, 190)), Parent = b })
+	new("UIStroke", { Color = Color3.fromRGB(15, 18, 30), Thickness = 1.5, ApplyStrokeMode = Enum.ApplyStrokeMode.Contextual, Parent = b })
 	-- Il pulsante si ingrandisce un po' sotto il mouse e si schiaccia quando lo premi.
 	local scale = new("UIScale", { Parent = b })
 	b.MouseEnter:Connect(function()
@@ -137,6 +139,49 @@ local function viewport(parent, dragonId, shiny, size, variant)
 	cam.CFrame = CFrame.lookAt(Vector3.new(-3.5, 2.6, -8.5), Vector3.new(0, 0.4, 0))
 	vp.CurrentCamera = cam
 	return vp
+end
+
+---------------------------------------------------------------- Immagini
+local Art = require(Shared.Config.Art)
+local artImages = {}
+local artLabels = {}
+
+local function artUrl(name)
+	return artImages[name] or ("rbxassetid://" .. tostring(Art.Decals[name] or 0))
+end
+
+-- Icona disegnata (immagine caricata su Roblox), che si aggiorna da sola quando il server
+-- comunica gli ID definitivi delle immagini.
+local function iconImage(name, props)
+	local img = new("ImageLabel", { BackgroundTransparency = 1, Image = artUrl(name), ScaleType = Enum.ScaleType.Fit })
+	for k, v in props do
+		img[k] = v
+	end
+	table.insert(artLabels, { Label = img, Name = name })
+	return img
+end
+
+local function refreshArt()
+	local raw = Workspace:GetAttribute("ArtImages")
+	if raw then
+		local ok, decoded = pcall(function()
+			return game:GetService("HttpService"):JSONDecode(raw)
+		end)
+		if ok then
+			artImages = decoded
+		end
+	end
+	for _, entry in artLabels do
+		if entry.Label.Parent then
+			entry.Label.Image = artUrl(entry.Name)
+		end
+	end
+end
+
+-- Contorno scuro attorno al testo, come nei giochi Roblox moderni.
+local function outline(lbl, thickness)
+	new("UIStroke", { Color = Color3.fromRGB(15, 18, 30), Thickness = thickness or 2, ApplyStrokeMode = Enum.ApplyStrokeMode.Contextual, Parent = lbl })
+	return lbl
 end
 
 local function rarityColor(rarity)
@@ -190,39 +235,67 @@ function UI.Bump()
 end
 
 ---------------------------------------------------------------- Pannelli
+local PANEL_STYLE = {
+	Dragons = { Icon = "dragons", Color = Color3.fromRGB(255, 122, 61) },
+	Shop = { Icon = "shop", Color = Color3.fromRGB(47, 191, 113) },
+	Gifts = { Icon = "gifts", Color = Color3.fromRGB(230, 80, 140) },
+	Eggs = { Icon = "eggs", Color = Color3.fromRGB(240, 170, 50) },
+	Quests = { Icon = "quests", Color = Color3.fromRGB(200, 140, 60) },
+	Daily = { Icon = "daily", Color = Color3.fromRGB(50, 170, 150) },
+	Skills = { Icon = "skills", Color = Color3.fromRGB(70, 140, 255) },
+	Style = { Icon = "style", Color = Color3.fromRGB(220, 90, 200) },
+	Potions = { Icon = "potions", Color = Color3.fromRGB(150, 90, 230) },
+	Nest = { Icon = "nest", Color = Color3.fromRGB(170, 110, 220) },
+	Market = { Icon = "market", Color = Color3.fromRGB(240, 120, 60) },
+	Rebirth = { Icon = "rebirth", Color = Color3.fromRGB(70, 190, 100) },
+	Codes = { Icon = "settings", Color = Color3.fromRGB(90, 110, 160) },
+}
+
 local function makePanel(name, title)
+	local style = PANEL_STYLE[name] or { Icon = "trophy", Color = C.Blue }
+	title = (string.gsub(title, "^[^%a]+", ""))
 	local frame = new("Frame", {
 		Name = name,
 		AnchorPoint = Vector2.new(0.5, 0.5),
-		Position = UDim2.fromScale(0.5, 0.52),
-		Size = UDim2.fromScale(0.62, 0.72),
+		Position = UDim2.fromScale(0.5, 0.53),
+		Size = UDim2.fromScale(0.64, 0.74),
 		BackgroundColor3 = C.Panel,
 		Visible = false,
 		Parent = gui,
 	}, {
-		corner(18),
-		stroke(Color3.fromRGB(60, 80, 120), 2),
-		new("UISizeConstraint", { MaxSize = Vector2.new(760, 560), MinSize = Vector2.new(320, 300) }),
+		corner(22),
+		new("UIStroke", { Color = Color3.fromRGB(10, 14, 26), Thickness = 4 }),
+		new("UISizeConstraint", { MaxSize = Vector2.new(780, 580), MinSize = Vector2.new(320, 300) }),
 		new("UIScale", { Name = "Pop" }),
-		new("UIGradient", { Rotation = 90, Color = ColorSequence.new(Color3.fromRGB(255, 255, 255), Color3.fromRGB(200, 210, 230)) }),
+		new("UIGradient", { Rotation = 90, Color = ColorSequence.new(Color3.fromRGB(255, 255, 255), Color3.fromRGB(185, 195, 215)) }),
 	})
-	label({ Text = title, Font = DISPLAY, TextSize = 28, Position = UDim2.fromOffset(18, 10), Size = UDim2.new(1, -80, 0, 36), Parent = frame })
-	button({ Text = "✕", AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -12, 0, 10), Size = UDim2.fromOffset(38, 38) }, C.Red, function()
+	local header = new("Frame", { Name = "Header", BackgroundColor3 = style.Color, Size = UDim2.new(1, 0, 0, 64), Parent = frame }, {
+		corner(22),
+		new("UIGradient", { Rotation = 90, Color = ColorSequence.new(Color3.new(1, 1, 1), Color3.fromRGB(170, 170, 170)) }),
+	})
+	new("Frame", { BackgroundColor3 = style.Color, BorderSizePixel = 0, Position = UDim2.new(0, 0, 1, -22), Size = UDim2.new(1, 0, 0, 22), Parent = header }, {
+		new("UIGradient", { Rotation = 90, Color = ColorSequence.new(Color3.fromRGB(200, 200, 200), Color3.fromRGB(170, 170, 170)) }),
+	})
+	iconImage(style.Icon, { Position = UDim2.fromOffset(-14, -22), Size = UDim2.fromOffset(84, 84), ZIndex = 3, Parent = frame })
+	outline(label({ Text = title, Font = DISPLAY, TextSize = 30, Position = UDim2.fromOffset(80, 8), Size = UDim2.new(1, -150, 0, 48), Parent = header }), 3)
+	local close = button({ Text = "X", AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, 10, 0, -10), Size = UDim2.fromOffset(46, 46), TextSize = 24, ZIndex = 4 }, C.Red, function()
 		UI.Close()
-	end).Parent = frame
-	local sub = label({ Name = "Sub", Text = "", TextColor3 = C.Muted, TextSize = 14, Position = UDim2.fromOffset(18, 46), Size = UDim2.new(1, -36, 0, 20), Parent = frame })
+	end)
+	close:FindFirstChildOfClass("UICorner").CornerRadius = UDim.new(1, 0)
+	close.Parent = frame
+	local sub = label({ Name = "Sub", Text = "", TextColor3 = C.Muted, TextSize = 14, TextWrapped = true, Position = UDim2.fromOffset(18, 70), Size = UDim2.new(1, -36, 0, 22), Parent = frame })
 	local body = new("ScrollingFrame", {
 		Name = "Body",
 		BackgroundTransparency = 1,
-		Position = UDim2.fromOffset(12, 74),
-		Size = UDim2.new(1, -24, 1, -86),
+		Position = UDim2.fromOffset(12, 98),
+		Size = UDim2.new(1, -24, 1, -110),
 		CanvasSize = UDim2.new(),
 		AutomaticCanvasSize = Enum.AutomaticSize.Y,
 		ScrollBarThickness = 6,
 		BorderSizePixel = 0,
 		Parent = frame,
 	})
-	panels[name] = { Frame = frame, Body = body, Sub = sub }
+	panels[name] = { Frame = frame, Body = body, Sub = sub, Header = header }
 	return panels[name]
 end
 
@@ -372,8 +445,11 @@ end
 local shopRows = {}
 local shopState = { Left = {} }
 
+local shopSectionLabels = {}
 local function shopSection(parent, title, order)
-	label({ Text = title, Font = DISPLAY, TextSize = 20, Size = UDim2.new(1, 0, 0, 30), LayoutOrder = order, Parent = parent })
+	local l = outline(label({ Text = title, Font = DISPLAY, TextSize = 22, Size = UDim2.new(1, 0, 0, 32), LayoutOrder = order, Parent = parent }), 2)
+	shopSectionLabels[title] = l
+	return l
 end
 
 local function shopRow(parent, order, icon, title, desc, hot)
@@ -453,13 +529,41 @@ end
 
 local function buildShopPanel()
 	local p = makePanel("Shop", "🛒 Shop")
-	p.Sub.Text = "Passes last forever. Each level unlocks the next one."
+	p.Sub.Text = ""
 	new("UIListLayout", { Padding = UDim.new(0, 8), SortOrder = Enum.SortOrder.LayoutOrder, Parent = p.Body })
 	local order = 0
 	local function o()
 		order += 1
 		return order
 	end
+
+	-- Schede: saltano alla sezione del negozio.
+	local tabs = new("Frame", { BackgroundTransparency = 1, Position = UDim2.fromOffset(14, 66), Size = UDim2.new(1, -28, 0, 30), Parent = p.Frame }, {
+		new("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, 6), SortOrder = Enum.SortOrder.LayoutOrder }),
+	})
+	for i, tab in { { "Offers", "Welcome offers", C.Red }, { "Passes", "Upgrades (forever)", C.Robux }, { "Potions", "Potions", Color3.fromRGB(150, 90, 230) }, { "Gems", "Gems", C.Gem }, { "Coins", "Coins", C.Gold } } do
+		local b = button({ Text = tab[1], Size = UDim2.fromOffset(96, 28), TextSize = 15, LayoutOrder = i }, tab[3], function()
+			local target = shopSectionLabels[tab[2]]
+			if target then
+				local y = target.AbsolutePosition.Y - p.Body.AbsolutePosition.Y + p.Body.CanvasPosition.Y
+				TweenService:Create(p.Body, TweenInfo.new(0.3, Enum.EasingStyle.Quad), { CanvasPosition = Vector2.new(0, math.max(0, y - 4)) }):Play()
+			end
+		end)
+		b.Parent = tabs
+	end
+
+	-- Banner in cima: l'offerta più importante, con l'immagine del gioco.
+	local banner = new("Frame", { BackgroundColor3 = C.Panel2, Size = UDim2.new(1, -6, 0, 150), LayoutOrder = o(), ClipsDescendants = true, Parent = p.Body }, { corner(16), new("UIStroke", { Color = C.Gold, Thickness = 3 }) })
+	iconImage("banner", { Size = UDim2.fromScale(1, 1), ScaleType = Enum.ScaleType.Crop, Parent = banner })
+	new("Frame", { BackgroundColor3 = Color3.new(0, 0, 0), BackgroundTransparency = 0.3, Size = UDim2.fromScale(0.62, 1), Parent = banner }, {
+		new("UIGradient", { Transparency = NumberSequence.new(0, 1) }),
+	})
+	outline(label({ Text = "STARTER PACK", Font = DISPLAY, TextSize = 30, Position = UDim2.fromOffset(18, 14), Size = UDim2.new(0.6, 0, 0, 36), Parent = banner }), 3)
+	outline(label({ Text = "Exclusive Crown Drake + 1 extra team slot forever", TextSize = 15, TextWrapped = true, Position = UDim2.fromOffset(18, 52), Size = UDim2.new(0.5, 0, 0, 40), Parent = banner }), 2)
+	local bannerBuy = button({ Text = "R$ " .. Products.List.StarterPack.Price .. "   (was " .. Products.List.StarterPack.Was .. ")", Position = UDim2.fromOffset(18, 100), Size = UDim2.fromOffset(220, 38), TextSize = 18 }, C.Robux, function()
+		buy("product", "StarterPack")
+	end)
+	bannerBuy.Parent = banner
 	-- Prima le offerte di benvenuto, perché sono quelle che si comprano di più.
 	for _, section in Products.Sections do
 		if section.Key == "Packs" or section.Key == "Limited" then
@@ -1060,13 +1164,13 @@ local function updateGiftButton()
 		end
 	end
 	if ready > 0 then
-		giftButtonLabel.Text = "🎁\n" .. ready .. " ready!"
+		giftButtonLabel.Text = ready .. " READY!"
 		giftDot.Visible = true
 	elseif nextLeft < math.huge then
-		giftButtonLabel.Text = "🎁\n" .. Format.Time(nextLeft)
+		giftButtonLabel.Text = Format.Time(nextLeft)
 		giftDot.Visible = false
 	else
-		giftButtonLabel.Text = "🎁\nAll done"
+		giftButtonLabel.Text = "Gifts"
 		giftDot.Visible = false
 	end
 end
@@ -1672,55 +1776,94 @@ end
 local function buildHud()
 	hud = new("Frame", { BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1), Parent = gui })
 
-	local wallet = new("Frame", { BackgroundTransparency = 1, Position = UDim2.fromOffset(14, 14), Size = UDim2.fromOffset(220, 96), Parent = hud }, {
-		new("UIListLayout", { Padding = UDim.new(0, 6), SortOrder = Enum.SortOrder.LayoutOrder }),
+	-- Monete e cristalli in alto al centro, con le icone disegnate.
+	local wallet = new("Frame", { BackgroundTransparency = 1, AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 10), Size = UDim2.fromOffset(470, 56), Parent = hud }, {
+		new("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, HorizontalAlignment = Enum.HorizontalAlignment.Center, Padding = UDim.new(0, 26), SortOrder = Enum.SortOrder.LayoutOrder }),
 	})
-	local function pill(icon, color, order)
-		local f = new("Frame", { BackgroundColor3 = C.Panel, BackgroundTransparency = 0.1, Size = UDim2.fromOffset(190, 40), LayoutOrder = order, Parent = wallet }, { corner(20), stroke(color, 2) })
-		label({ Text = icon, TextSize = 22, TextXAlignment = Enum.TextXAlignment.Center, Size = UDim2.fromOffset(40, 40), Parent = f })
-		local l = label({ Text = "0", Font = DISPLAY, TextSize = 22, Position = UDim2.fromOffset(42, 0), Size = UDim2.new(1, -50, 1, 0), Parent = f })
+	local function pill(iconName, color, order)
+		local f = new("Frame", { BackgroundColor3 = Color3.fromRGB(20, 26, 44), BackgroundTransparency = 0.05, Size = UDim2.fromOffset(200, 48), LayoutOrder = order, Parent = wallet }, {
+			corner(24),
+			new("UIStroke", { Color = color, Thickness = 3 }),
+			new("UIGradient", { Rotation = 90, Color = ColorSequence.new(Color3.fromRGB(255, 255, 255), Color3.fromRGB(150, 150, 170)) }),
+		})
+		iconImage(iconName, { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.new(0, 4, 0.5, 0), Size = UDim2.fromOffset(62, 62), ZIndex = 2, Parent = f })
+		local l = outline(label({ Text = "0", Font = DISPLAY, TextSize = 28, TextXAlignment = Enum.TextXAlignment.Center, Position = UDim2.fromOffset(36, 0), Size = UDim2.new(1, -44, 1, 0), Parent = f }), 2.5)
 		new("UIScale", { Parent = l })
 		return l
 	end
-	coinsLabel = pill("🪙", C.Gold, 1)
-	gemsLabel = pill("💎", C.Gem, 2)
+	coinsLabel = pill("coin", C.Gold, 1)
+	gemsLabel = pill("gem", C.Gem, 2)
 
-	chips = new("Frame", { BackgroundTransparency = 1, Position = UDim2.fromOffset(14, 112), Size = UDim2.fromOffset(300, 60), Parent = hud }, {
-		new("UIListLayout", { Padding = UDim.new(0, 4), SortOrder = Enum.SortOrder.LayoutOrder }),
+	chips = new("Frame", { BackgroundTransparency = 1, AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 70), Size = UDim2.fromOffset(600, 26), Parent = hud }, {
+		new("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, HorizontalAlignment = Enum.HorizontalAlignment.Center, Padding = UDim.new(0, 6), SortOrder = Enum.SortOrder.LayoutOrder }),
 	})
 
-	statusLabel = label({ Text = "", Font = DISPLAY, TextSize = 22, TextXAlignment = Enum.TextXAlignment.Center, BackgroundTransparency = 0.05, AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 14), Size = UDim2.fromOffset(300, 40), Visible = false, Parent = hud })
-	corner(20).Parent = statusLabel
+	statusLabel = outline(label({ Text = "", Font = DISPLAY, TextSize = 24, TextXAlignment = Enum.TextXAlignment.Center, BackgroundTransparency = 0.05, AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 102), Size = UDim2.fromOffset(300, 42), Visible = false, Parent = hud }), 2)
+	corner(21).Parent = statusLabel
 	for _, attr in { "InCombat", "Training", "TrainingXp" } do
 		player:GetAttributeChangedSignal(attr):Connect(refreshStatus)
 	end
 
-	local side = new("Frame", { BackgroundTransparency = 1, AnchorPoint = Vector2.new(0, 0.5), Position = UDim2.new(0, 14, 0.62, 0), Size = UDim2.fromOffset(240, 280), Parent = hud }, {
-		new("UIGridLayout", { CellSize = UDim2.fromOffset(74, 62), CellPadding = UDim2.fromOffset(8, 8), SortOrder = Enum.SortOrder.LayoutOrder }),
-	})
-	local function sideButton(text, color, order, panel)
-		local b = button({ Text = text, TextSize = 15, TextWrapped = true, LayoutOrder = order }, color, function()
+	-- Pulsanti laterali: icona grande disegnata con il nome sotto, a sinistra e a destra.
+	local function dock(anchorX, x)
+		return new("Frame", { BackgroundTransparency = 1, AnchorPoint = Vector2.new(anchorX, 0.5), Position = UDim2.new(anchorX, x, 0.54, 0), Size = UDim2.fromOffset(176, 300), Parent = hud }, {
+			new("UIGridLayout", { CellSize = UDim2.fromOffset(84, 96), CellPadding = UDim2.fromOffset(8, 4), SortOrder = Enum.SortOrder.LayoutOrder, HorizontalAlignment = if anchorX == 0 then Enum.HorizontalAlignment.Left else Enum.HorizontalAlignment.Right }),
+		})
+	end
+	local left = dock(0, 10)
+	local right = dock(1, -10)
+	local function sideButton(parent, iconName, text, order, panel)
+		local b = new("ImageButton", { BackgroundTransparency = 1, Image = "", LayoutOrder = order, Parent = parent })
+		local img = iconImage(iconName, { AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 0), Size = UDim2.fromOffset(72, 72), Parent = b })
+		local lbl = outline(label({ Text = text, Font = DISPLAY, TextSize = 17, TextXAlignment = Enum.TextXAlignment.Center, Position = UDim2.new(0, -6, 0, 70), Size = UDim2.new(1, 12, 0, 22), Parent = b }), 2.5)
+		local scale = new("UIScale", { Parent = img })
+		b.MouseEnter:Connect(function()
+			TweenService:Create(scale, TweenInfo.new(0.12), { Scale = 1.1 }):Play()
+		end)
+		b.MouseLeave:Connect(function()
+			TweenService:Create(scale, TweenInfo.new(0.12), { Scale = 1 }):Play()
+		end)
+		b.Activated:Connect(function()
+			Sfx.Play("Click")
+			scale.Scale = 0.85
+			TweenService:Create(scale, TweenInfo.new(0.25, Enum.EasingStyle.Back), { Scale = 1 }):Play()
 			UI.Open(panel)
 		end)
-		b.Parent = side
-		return b
+		return b, lbl
 	end
-	sideButton("🐉\nDragons", C.Orange, 1, "Dragons")
-	sideButton("🛒\nShop", C.Robux, 2, "Shop")
-	local gifts = sideButton("🎁\nGifts", Color3.fromRGB(230, 80, 140), 3, "Gifts")
-	sideButton("🥚\nEggs", Color3.fromRGB(240, 180, 60), 4, "Eggs")
-	sideButton("📜\nQuests", Color3.fromRGB(200, 140, 60), 5, "Quests")
-	sideButton("📅\nDaily", Color3.fromRGB(60, 170, 150), 6, "Daily")
-	sideButton("⚡\nSkills", Color3.fromRGB(230, 120, 40), 7, "Skills")
-	sideButton("🎨\nStyle", Color3.fromRGB(220, 90, 200), 8, "Style")
-	sideButton("🧪\nPotions", Color3.fromRGB(150, 90, 230), 9, "Potions")
-	sideButton("🪺\nNest", Color3.fromRGB(170, 110, 220), 10, "Nest")
-	sideButton("🏪\nMarket", Color3.fromRGB(240, 150, 50), 11, "Market")
-	sideButton("♻️\nRebirth", C.Blue, 12, "Rebirth")
-	giftButtonLabel = gifts
-	giftDot = new("Frame", { BackgroundColor3 = C.Red, AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, 4, 0, -4), Size = UDim2.fromOffset(16, 16), Visible = false, Parent = gifts }, { corner(999), stroke(Color3.new(1, 1, 1), 2) })
+	local shopButton = sideButton(left, "shop", "Shop", 1, "Shop")
+	sideButton(left, "dragons", "Dragons", 2, "Dragons")
+	sideButton(left, "eggs", "Eggs", 3, "Eggs")
+	local gifts, giftsLabel = sideButton(left, "gifts", "Gifts", 4, "Gifts")
+	sideButton(left, "quests", "Quests", 5, "Quests")
+	sideButton(left, "daily", "Daily", 6, "Daily")
+	sideButton(right, "skills", "Skills", 1, "Skills")
+	sideButton(right, "style", "Style", 2, "Style")
+	sideButton(right, "potions", "Potions", 3, "Potions")
+	sideButton(right, "nest", "Nest", 4, "Nest")
+	sideButton(right, "market", "Market", 5, "Market")
+	sideButton(right, "rebirth", "Rebirth", 6, "Rebirth")
 
-	toastHolder = new("Frame", { BackgroundTransparency = 1, AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 62), Size = UDim2.fromOffset(360, 200), Parent = gui }, {
+	-- Nastro "SALE" sul negozio: attira l'occhio sulle offerte.
+	local ribbon = outline(label({ Text = "SALE", Font = DISPLAY, TextSize = 14, TextXAlignment = Enum.TextXAlignment.Center, BackgroundTransparency = 0, BackgroundColor3 = C.Red, AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, 4, 0, -2), Size = UDim2.fromOffset(46, 20), Rotation = 12, ZIndex = 3, Parent = shopButton }), 1.5)
+	corner(8).Parent = ribbon
+	task.spawn(function()
+		while ribbon.Parent do
+			TweenService:Create(ribbon, TweenInfo.new(0.6, Enum.EasingStyle.Sine), { Rotation = 4 }):Play()
+			task.wait(0.6)
+			TweenService:Create(ribbon, TweenInfo.new(0.6, Enum.EasingStyle.Sine), { Rotation = 14 }):Play()
+			task.wait(0.6)
+		end
+	end)
+
+	eventHolder = new("Frame", { BackgroundTransparency = 1, AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -12, 0, 10), Size = UDim2.fromOffset(330, 110), ClipsDescendants = true, Parent = hud }, {
+		new("UIListLayout", { Padding = UDim.new(0, 4), SortOrder = Enum.SortOrder.LayoutOrder, HorizontalAlignment = Enum.HorizontalAlignment.Right }),
+	})
+
+	giftButtonLabel = giftsLabel
+	giftDot = new("Frame", { BackgroundColor3 = C.Red, AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -2, 0, 0), Size = UDim2.fromOffset(20, 20), Visible = false, ZIndex = 3, Parent = gifts }, { corner(999), stroke(Color3.new(1, 1, 1), 2) })
+
+	toastHolder = new("Frame", { BackgroundTransparency = 1, AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 150), Size = UDim2.fromOffset(380, 220), Parent = gui }, {
 		new("UIListLayout", { Padding = UDim.new(0, 6), SortOrder = Enum.SortOrder.LayoutOrder, HorizontalAlignment = Enum.HorizontalAlignment.Center }),
 	})
 end
@@ -1738,6 +1881,8 @@ function UI.Start()
 	rescale()
 
 	buildHud()
+	Workspace:GetAttributeChangedSignal("ArtImages"):Connect(refreshArt)
+	refreshArt()
 	buildDragonsPanel()
 	buildShopPanel()
 	buildRebirthPanel()
